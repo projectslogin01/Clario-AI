@@ -1,138 +1,50 @@
 import userModel from "../models/user.model.js";
-import { isMailConfigured, sendEmail } from "../services/mail.services.js";
-import { getGoogleAuthUrl, getGoogleUserInfo } from "../services/google.services.js";
 import jwt from "jsonwebtoken";
+import { sendEmail } from "../services/mail.service.js";
+
 
 export async function register(req, res) {
-    try {
-        const username = req.body.username.trim();
-        const email = req.body.email.trim().toLowerCase();
-        const { password } = req.body;
 
-        const existingUser = await userModel.findOne({
-            $or: [{ email }, { username }]
-        });
+    const { username, email, password } = req.body;
 
-        if (existingUser) {
-            return res.status(400).json({
-                success: false,
-                message: "User with this email or username already exists"
-            });
-        }
+    const isUserAlreadyExists = await userModel.findOne({
+        $or: [ { email }, { username } ]
+    })
 
-        const user = await userModel.create({
-            username,
-            email,
-            password
-        });
-
-        if (isMailConfigured()) {
-            try {
-                await sendEmail({
-                    to: email,
-                    subject: "Welcome",
-                    text: `Hi ${username}, your account has been created successfully.`
-                });
-            } catch (emailError) {
-                console.error("Email sending error:", emailError.message);
-            }
-        }
-
-        return res.status(201).json({
-            success: true,
-            message: "User registered successfully",
-            user: {
-                id: user._id,
-                username: user.username,
-                email: user.email,
-                verified: user.verified,
-                createdAt: user.createdAt
-            }
-        });
-
-    } catch (error) {
-        console.error("Registration error:", error.message);
-
-        if (error.code === 11000) {
-            return res.status(400).json({
-                success: false,
-                message: "User with this email or username already exists"
-            });
-        }
-
-        return res.status(500).json({
+    if (isUserAlreadyExists) {
+        return res.status(400).json({
+            message: "User with this email or username already exists",
             success: false,
-            message: "Error during registration"
-        });
+            err: "User already exists"
+        })
     }
-}
 
-export function googleAuthURL(req, res) {
+    const user = await userModel.create({ username, email, password })
+
     try {
-        const url = getGoogleAuthUrl();
-        return res.status(200).json({
-            success: true,
-            authURL: url
+        await sendEmail({
+            to: email,
+            subject: "Welcome to Clario-AI!",
+            html: `
+                    <p>Hi ${username},</p>
+                    <p>Thank you for registering at <strong>Clario</strong>. We're excited to have you on board!</p>
+                    <p>Best regards,<br>The Clario Team</p>
+            `
         });
     } catch (error) {
-        console.error("Error generating Google auth URL:", error.message);
-        return res.status(500).json({
-            success: false,
-            message: "Error generating authentication URL"
-        });
+        console.error("Welcome email could not be sent:", error?.message || error);
     }
-}
 
-export async function googleCallback(req, res) {
-    try {
-        const { code } = req.query;
-
-        if (!code) {
-            return res.status(400).json({
-                success: false,
-                message: "Missing authorization code"
-            });
+    res.status(201).json({
+        message: "User registered successfully",
+        success: true,
+        user: {
+            id: user._id,
+            username: user.username,
+            email: user.email
         }
+    });
 
-        const googleUser = await getGoogleUserInfo(code);
 
-        let user = await userModel.findOne({ email: googleUser.email });
 
-        if (!user) {
-            user = await userModel.create({
-                username: googleUser.name || googleUser.email.split("@")[0],
-                email: googleUser.email,
-                googleId: googleUser.id,
-                verified: true,
-                password: null
-            });
-        } else if (!user.googleId) {
-            user.googleId = googleUser.id;
-            await user.save();
-        }
-
-        const token = jwt.sign(
-            { id: user._id, email: user.email },
-            process.env.JWT_SECRET,
-            { expiresIn: "24h" }
-        );
-
-        return res.status(200).json({
-            success: true,
-            message: "Google authentication successful",
-            token,
-            user: {
-                id: user._id,
-                username: user.username,
-                email: user.email,
-                verified: user.verified
-            }
-        });
-    } catch (error) {
-        console.error("Google callback error:", error.message);
-        return res.status(500).json({
-            success: false,
-            message: "Error during Google authentication"
-        });
-    }
 }

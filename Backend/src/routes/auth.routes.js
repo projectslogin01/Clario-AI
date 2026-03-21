@@ -1,20 +1,15 @@
-import express from 'express';
-import { register, googleAuthURL, googleCallback } from '../controllers/auth.controller.js';
-import { registerValidationRules } from '../validators/auth.validator.js';
-import validate from '../middlewares/validate.middleware.js';
+import { Router } from "express";
+import { register } from "../controllers/auth.controller.js";
+import { registerValidator } from "../validators/auth.validator.js";
 
-const authRoutes = express.Router();
+const authRouter = Router();
 
-// Traditional register route
-authRoutes.post(
-  '/register',
-  registerValidationRules(),
-  validate,
-  register
-);
+/**
+ * @route POST /api/auth/register
+ * @desc Register a new user
+ * @access Public
+ * @body { username, email, password }
+ */
+authRouter.post("/register", registerValidator, register);
 
-// Google OAuth routes
-authRoutes.get('/google', googleAuthURL);
-authRoutes.get('/google/callback', googleCallback);
-
-export default authRoutes;
+export default authRouter;
