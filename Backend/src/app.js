@@ -4,6 +4,7 @@ import cookieParser from "cookie-parser";
 import authRouter from "./routes/auth.routes.js";
 
 const app = express();
+// These origins cover the common local dev ports used by Vite and other frontend setups.
 const allowedOrigins = new Set(
     [
         process.env.FRONTEND_URL,
@@ -16,7 +17,7 @@ const allowedOrigins = new Set(
     ].filter(Boolean)
 );
 
-// Middleware
+// Core middleware for CORS, JSON/form parsing, and cookie-based auth.
 app.use(cors({
     // Allow the common local frontend URLs so auth works in dev without extra edits.
     origin(origin, callback) {

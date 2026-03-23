@@ -4,6 +4,7 @@ import { connectToDB } from "./src/config/database.js";
 
 const PORT = process.env.PORT || 5000;
 
+// Start-up sequence: connect to MongoDB first, then let Express begin serving requests.
 connectToDB()
     .catch((err) => {
         console.error("MongoDB connection failed:", err);

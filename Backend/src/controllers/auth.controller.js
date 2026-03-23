@@ -2,6 +2,11 @@ import userModel from "../models/user.model.js";
 import jwt from "jsonwebtoken";
 import { sendEmail } from "../services/mail.service.js";
 
+/**
+ * Registers a user, creates an email verification token, and sends the verification email.
+ * The account is created even if email delivery fails, so the frontend should still tell the
+ * user to check email and contact support if no message arrives.
+ */
 export async function register(req, res) {
     try {
         const { username, email, password } = req.body;
@@ -68,6 +73,9 @@ export async function register(req, res) {
     }
 }
 
+/**
+ * Verifies the email token from the mail link and marks the user as verified.
+ */
 export async function verifyEmail(req,res){
     const { token } = req.query;
 
@@ -102,6 +110,10 @@ export async function verifyEmail(req,res){
     }
 }
 
+/**
+ * Logs the user in after checking password and email verification state.
+ * On success the JWT is stored in an HTTP cookie.
+ */
 export async function login(req,res){
     const { email, password } = req.body;
 
@@ -150,6 +162,9 @@ export async function login(req,res){
     })
 }
 
+/**
+ * Returns the currently authenticated user based on the cookie-decoded JWT payload.
+ */
 export async function getme(req,res) {
     const userId = req.user.id;
     const user = await userModel.findById(userId).select("-password");

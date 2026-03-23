@@ -5,6 +5,7 @@ import { MoonIcon, SunIcon } from '../components/AuthIcons'
 
 const STORAGE_KEY = 'perplexity-auth-theme'
 
+// Read the saved theme first, then fall back to the user's system preference.
 const getInitialTheme = () => {
   if (typeof window === 'undefined') {
     return 'light'
@@ -19,6 +20,7 @@ const getInitialTheme = () => {
   return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
 }
 
+// Shared layout for auth pages, including the theme toggle and transition overlay.
 const AuthLayout = () => {
   const [theme, setTheme] = useState(getInitialTheme)
   const [isThemeTransitioning, setIsThemeTransitioning] = useState(false)
@@ -40,6 +42,7 @@ const AuthLayout = () => {
 
   const nextTheme = theme === 'light' ? 'dark' : 'light'
 
+  // Keep the theme switch visually smooth by briefly enabling the transition layer.
   const handleThemeToggle = () => {
     if (transitionTimeoutRef.current) {
       window.clearTimeout(transitionTimeoutRef.current)

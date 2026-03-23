@@ -6,6 +6,7 @@ import AuthCard from '../components/AuthCard'
 import { LockIcon, MailIcon } from '../components/AuthIcons'
 import { useAuth } from '../hook/useAuth'
 
+// Login page owns only local form state. API and Redux details stay inside useAuth.
 const Login = () => {
   const location = useLocation()
   const { handleLogin } = useAuth()
@@ -60,6 +61,7 @@ const Login = () => {
       password: formData.password,
     })
 
+    // Successful register redirects also land here with a friendly message.
     if (data?.success) {
       setSuccessMessage(`Welcome back, ${data.user?.username ?? data.user?.userrname ?? 'user'}!`)
     }

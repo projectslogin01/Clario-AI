@@ -7,10 +7,12 @@ const googleClientId = process.env.GOOGLE_CLIENT_ID;
 const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET;
 const googleRefreshToken = process.env.GOOGLE_REFRESH_TOKEN;
 
+// OAuth mode is preferred when the Gmail client credentials are available.
 function hasOAuthConfig() {
     return Boolean(gmailUser && googleClientId && googleClientSecret && googleRefreshToken);
 }
 
+// App password mode is a simpler fallback for local development.
 function createAppPasswordTransporter() {
     if (!gmailUser || !gmailAppPassword) {
         throw new Error("Missing Gmail app password configuration.");
@@ -25,6 +27,7 @@ function createAppPasswordTransporter() {
     });
 }
 
+// Builds a Gmail OAuth2 transporter using the refresh token from env.
 async function createOAuthTransporter() {
     if (!hasOAuthConfig()) {
         throw new Error("Missing Gmail OAuth2 configuration.");
@@ -55,6 +58,7 @@ async function createOAuthTransporter() {
     });
 }
 
+// Pick the first email strategy that has complete configuration.
 async function createTransporter() {
     if (gmailAppPassword) {
         return createAppPasswordTransporter();
@@ -69,6 +73,7 @@ async function createTransporter() {
     );
 }
 
+// Keeps mail setup errors readable in local development logs.
 function logMailError(context, error) {
     const message = error?.message || "";
     const unauthorizedClient = message.includes("unauthorized_client");
@@ -85,6 +90,7 @@ function logMailError(context, error) {
     console.error(`Email transporter ${context} failed:`, error);
 }
 
+// Verify mail configuration once on startup so configuration problems show up early.
 void createTransporter()
     .then((transporter) => transporter.verify())
     .then(() => {
@@ -94,6 +100,10 @@ void createTransporter()
         logMailError("verification", error);
     });
 
+/**
+ * Sends an email using the configured Gmail transporter.
+ * @param {{ to: string, subject: string, html?: string, text?: string }} payload
+ */
 export async function sendEmail({ to, subject, html, text }) {
     try {
         const transporter = await createTransporter();

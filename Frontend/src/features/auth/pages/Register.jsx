@@ -6,6 +6,7 @@ import AuthCard from '../components/AuthCard'
 import { LockIcon, MailIcon, UserIcon } from '../components/AuthIcons'
 import { useAuth } from '../hook/useAuth'
 
+// Register page handles small UI-only checks before calling the shared auth hook.
 const Register = () => {
   const navigate = useNavigate()
   const { handleRegister } = useAuth()

@@ -1,6 +1,9 @@
 import { body, validationResult } from "express-validator";
 
 
+/**
+ * Sends validation errors back in a format the frontend hook can read.
+ */
 export function validate(req, res, next) {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -9,6 +12,7 @@ export function validate(req, res, next) {
     next();
 }
 
+// Input rules for the register form.
 export const registerValidator = [
     body("username")
         .trim()
@@ -28,6 +32,7 @@ export const registerValidator = [
     validate
 ];
 
+// Input rules for the login form.
 export const loginValidator = [
   body("email")
       .trim()

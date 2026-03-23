@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
 
+// User schema stores only the fields required by the current auth flow.
 const userSchema = new mongoose.Schema(
     {
         username: {
@@ -29,11 +30,13 @@ const userSchema = new mongoose.Schema(
     { timestamps: true }
 );
 
+// Hash the password before saving so the database never stores plain text passwords.
 userSchema.pre('save', async function () {
     if (!this.isModified('password')) return;
     this.password = await bcrypt.hash(this.password, 10);
 });
 
+// Compare a plain-text password with the saved hash during login.
 userSchema.methods.comparePassword = function (candidatePassword) {
     return bcrypt.compare(candidatePassword, this.password);
 };

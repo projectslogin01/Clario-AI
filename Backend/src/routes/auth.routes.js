@@ -6,6 +6,7 @@ import { authUser } from "../middleware/auth.middleware.js";
 
 const authRouter = Router();
 
+// Public registration route. Validation runs before the controller.
 /**
  * @route POST /api/auth/register
  * @desc Register a new user
@@ -14,6 +15,7 @@ const authRouter = Router();
  */
 authRouter.post("/register", registerValidator, register);
 
+// Public login route. Backend returns a cookie on success.
 /**
  * @route POST /api/auth/login
  * @desc Login a user and return JWT
@@ -22,14 +24,14 @@ authRouter.post("/register", registerValidator, register);
  */
 authRouter.post("/login", loginValidator, login);
 
-/**
- * @route GET /api/auth/getme
- * @desc Give info about user
- * @access Public
- */
-
+// Email verification comes from the link inside the welcome email.
 authRouter.get("/verify-email",verifyEmail);
 
+/**
+ * @route GET /api/auth/get-me
+ * @desc Return the current authenticated user
+ * @access Private
+ */
 authRouter.get("/get-me", authUser, getme)
 
 export default authRouter;

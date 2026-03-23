@@ -3,6 +3,10 @@ import { Link } from 'react-router-dom'
 
 import { ArrowRightIcon, GoogleIcon, SparkleIcon } from './AuthIcons'
 
+/**
+ * Shared auth card used by both login and register pages.
+ * The parent page provides the fields and submit behavior.
+ */
 const AuthCard = ({
   auxiliary,
   disabled,
@@ -18,6 +22,7 @@ const AuthCard = ({
   subtitle,
   title,
 }) => {
+  // Prevent full page reload and let the page decide what happens on submit.
   const handleSubmit = (event) => {
     event.preventDefault()
     onSubmit?.(event)

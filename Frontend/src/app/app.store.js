@@ -1,7 +1,7 @@
-import { configureStore } from "@reduxjs/toolkit";
-import authReducer from "../features/auth/auth.slice"
+import { configureStore } from '@reduxjs/toolkit'
+import authReducer from '../features/auth/auth.slice'
 
-// Central app store. Auth pages read loading/error/user from here.
+// Central Redux store. Auth pages read loading, error, and user state from here.
 export const store = configureStore({
-    reducer: {auth: authReducer}
+  reducer: { auth: authReducer },
 })

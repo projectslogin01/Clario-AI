@@ -5,6 +5,7 @@ import AuthLayout from './features/auth/layouts/AuthLayout'
 import Login from './features/auth/pages/Login'
 import Register from './features/auth/pages/Register'
 
+// Central route table for the current auth experience.
 export const router = createBrowserRouter([
   {
     path: '/',
