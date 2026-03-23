@@ -1,5 +1,5 @@
 import React from 'react'
-import { createBrowserRouter, Navigate } from 'react-router-dom'
+import { createBrowserRouter } from 'react-router-dom'
 
 import AuthLayout from './features/auth/layouts/AuthLayout'
 import Login from './features/auth/pages/Login'
@@ -10,17 +10,24 @@ import Protected from './features/auth/components/Protected'
 // Central route table for the current auth experience.
 export const router = createBrowserRouter([
   {
-    path: '/login',
-    element: <Login />,
-  },
-  {
-    path: '/register',
-    element: <Register />,
+    element: <AuthLayout />,
+    children: [
+      {
+        path: '/login',
+        element: <Login />,
+      },
+      {
+        path: '/register',
+        element: <Register />,
+      },
+    ],
   },
   {
     path: '/',
-    element: <Protected>
-      <Dashboard />
+    element: (
+      <Protected>
+        <Dashboard />
       </Protected>
-  }
+    ),
+  },
 ])

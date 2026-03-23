@@ -2,15 +2,16 @@
 
 ## Project Overview
 
-This project is a full-stack authentication-focused app with:
+This project is a full-stack app with:
 
 - a React + Vite frontend
 - an Express + MongoDB backend
+- cookie-based authentication
 - email verification during registration
-- Redux for auth state
-- a custom SCSS-based auth UI with light and dark themes
+- a protected dashboard route
+- Socket.IO for real-time chat connectivity
 
-The current work is centered around the authentication experience, including UI design, backend integration, and email verification.
+The current codebase is focused on a solid auth flow first, with the dashboard already prepared to open a real-time socket connection after login.
 
 ## Tech Stack
 
@@ -22,6 +23,7 @@ The current work is centered around the authentication experience, including UI 
 - Redux Toolkit
 - React Redux
 - Axios
+- Socket.IO Client
 - SCSS
 
 ### Backend
@@ -30,203 +32,170 @@ The current work is centered around the authentication experience, including UI 
 - MongoDB with Mongoose
 - JWT
 - Nodemailer
-- Google OAuth2 / Gmail mail transport
 - Express Validator
+- Socket.IO
 
 ## Current Architecture
 
 ### Frontend Structure
 
 - `Frontend/src/App.jsx`
-  - mounts the router
+  - mounts the router and kicks off the initial `get-me` auth check
 - `Frontend/src/app.routes.jsx`
-  - defines `/login` and `/register`
+  - defines auth routes under `AuthLayout`
+  - protects the dashboard route at `/`
 - `Frontend/src/app/app.store.js`
-  - configures Redux store
+  - configures the Redux store
 - `Frontend/src/features/auth/auth.slice.js`
   - stores `user`, `loading`, and `error`
 - `Frontend/src/features/auth/hook/useAuth.js`
-  - connects UI to auth API calls and Redux updates
+  - connects auth pages to the API layer and Redux
 - `Frontend/src/features/auth/service/auth.api.js`
   - contains Axios calls for register, login, and get-me
-- `Frontend/src/features/auth/pages/Login.jsx`
-  - login form page
-- `Frontend/src/features/auth/pages/Register.jsx`
-  - register form page
-- `Frontend/src/features/auth/components/AuthCard.jsx`
-  - reusable auth card UI
+- `Frontend/src/features/auth/components/Protected.jsx`
+  - blocks unauthenticated users from opening `/`
 - `Frontend/src/features/auth/layouts/AuthLayout.jsx`
-  - shared auth layout with theme toggle
-- `Frontend/src/styles/`
-  - SCSS tokens, globals, and auth page styles
+  - shared auth route layout with theme toggle and outlet
+- `Frontend/src/features/auth/pages/Login.jsx`
+  - logs the user in and redirects to `/` on success
+- `Frontend/src/features/auth/pages/Register.jsx`
+  - creates an account and redirects to `/login` with a verification note
+- `Frontend/src/features/chat/pages/Dashboard.jsx`
+  - dashboard shell for authenticated users
+  - starts chat socket lifecycle only when a user exists
+- `Frontend/src/features/chat/hook/useChat.js`
+  - keeps the socket connect/disconnect lifecycle in one small hook
+- `Frontend/src/features/chat/service/chat.socket.js`
+  - owns the Socket.IO client instance
+  - exposes simple `connectSocket` and `disconnectSocket` helpers
 
 ### Backend Structure
 
 - `Backend/server.js`
-  - loads env, connects DB, starts server
+  - creates the shared HTTP server
+  - attaches Socket.IO to that server
+  - connects to MongoDB
+  - starts listening with `httpServer.listen(...)`
 - `Backend/src/app.js`
-  - express app setup, middleware, CORS, routes
+  - configures Express middleware, CORS, and API routes
 - `Backend/src/routes/auth.routes.js`
-  - auth routes
+  - auth endpoints
 - `Backend/src/controllers/auth.controller.js`
-  - register, verify-email, login, get-me logic
+  - register, verify-email, login, and get-me logic
 - `Backend/src/models/user.model.js`
   - user schema and password hashing
 - `Backend/src/services/mail.service.js`
-  - Gmail transport and sendEmail helper
+  - email transport and helper logic
 - `Backend/src/config/database.js`
-  - MongoDB connection
+  - MongoDB connection setup
+- `Backend/src/sockets/server.socket.js`
+  - initializes the Socket.IO server and listens for new connections
+
+## Routing Flow
+
+### Auth Routes
+
+- `/login`
+  - rendered inside `AuthLayout`
+- `/register`
+  - rendered inside `AuthLayout`
+
+### Protected Route
+
+- `/`
+  - wrapped by `Protected`
+  - opens the dashboard only when `state.auth.user` exists
+  - redirects to `/login` when the user is missing
 
 ## Authentication Flow
 
 ### Register
 
-1. User fills username, email, password, and confirm password.
-2. Frontend validates:
-   - terms accepted
-   - password matches confirm password
-3. Frontend sends:
-   - `{ username, email, password }`
-4. Backend creates user.
-5. Backend generates email verification token.
-6. Backend sends verification email.
-7. Frontend redirects user to `/login` with a note to verify email first.
+1. User enters username, email, password, and confirm password.
+2. Frontend checks terms acceptance and password confirmation.
+3. Frontend sends `{ username, email, password }` to the backend.
+4. Backend creates the user and sends a verification email.
+5. Frontend redirects to `/login` with a success message in route state.
 
 ### Verify Email
 
-1. User clicks verification link from email.
-2. Backend verifies token.
-3. Backend sets `user.verified = true`.
-4. Backend sends a simple success page with a link back to login.
+1. User opens the email verification link.
+2. Backend verifies the token.
+3. Backend marks the account as verified.
 
 ### Login
 
 1. User enters email and password.
-2. Frontend sends:
-   - `{ email, password }`
-3. Backend checks:
-   - user exists
-   - password matches
-   - email is verified
-4. Backend sends auth cookie and user payload.
-5. Frontend stores user in Redux.
+2. Frontend sends `{ email, password }`.
+3. Backend validates the credentials and verified status.
+4. Backend sends the auth cookie and user payload.
+5. Frontend stores the user in Redux.
+6. Frontend redirects to `/`.
 
-## Design System
+## Socket Flow
 
-The auth UI now uses a shared SCSS system with:
+1. `Backend/server.js` creates `httpServer` from the Express app.
+2. `initSocket(httpServer)` attaches Socket.IO to that same server.
+3. The backend starts with `httpServer.listen(PORT)`.
+4. `Dashboard.jsx` calls `useChat(Boolean(user))`.
+5. `useChat` connects the socket when the dashboard is mounted for an authenticated user.
+6. `useChat` disconnects the socket when the dashboard unmounts.
 
-- reusable spacing and timing tokens
-- soft glass card layout
-- smooth hover and transition effects
-- light and dark themes
-- floating theme toggle
-- shared status message styles for success and error feedback
+This setup avoids the earlier issue where Socket.IO returned `404` because the Express app and the Socket.IO server were not listening on the same HTTP server.
 
-The design is intentionally centralized so the login and register pages stay visually consistent.
+## Recent Cleanup
 
-## What We Completed Today
-
-### UI and Styling
-
-- installed and structured SCSS for the frontend
-- created reusable auth UI components
-- built login and register pages in the same visual style
-- added SVG icons
-- added light and dark mode
-- added smoother hover and transition effects
-- added animated theme switching
-- added status banners for auth feedback
-
-### Frontend Auth Integration
-
-- connected login page to backend through existing hook/service layer
-- connected register page to backend through existing hook/service layer
-- updated register flow to use `username` because backend expects `username`
-- kept confirm password validation on the frontend
-- kept register success flow aligned with backend email verification requirement
-- normalized backend auth errors for easier UI messages
-- normalized backend `userrname` typo safely in the frontend hook
-
-### State and Routing
-
-- fixed Redux store setup import
-- kept auth state in the existing auth slice
-- used route state to pass the "verify your email first" message from register to login
-
-### Backend Integration
-
-- verified backend register route works
-- added CORS support for common local frontend origins
-- added `cors` package to backend dependencies
-- verified browser-style preflight for local dev origins
-
-### Mail and Verification
-
-- checked the mail service and verified transporter setup
-- confirmed direct mail sending works with the current Gmail config
-- confirmed verification emails are sent to the email used during registration
+- login now redirects to `/` after a successful sign-in
+- dashboard access is protected by `Protected.jsx`
+- auth pages are now mounted through `AuthLayout`
+- chat socket code was simplified into clear connect/disconnect helpers
+- backend startup now correctly listens through the Socket.IO-enabled `httpServer`
+- project documentation was refreshed to match the current codebase
 
 ## Important Notes
 
-### Email Verification Behavior
+### Email Verification
 
-- Registration does not auto-login.
-- Users must verify email before login works.
-- The register controller currently returns success even if the email send fails internally, because email sending is wrapped in a `try/catch`.
+- registration does not auto-login
+- users must verify email before login succeeds
 
-### Local Development CORS
+### Local Development URLs
 
-The backend currently allows these local frontend origins:
+- frontend socket and API calls currently target `http://localhost:5000`
+- local frontend origins are allowed in the backend CORS config
 
-- `http://localhost:3000`
-- `http://localhost:5173`
-- `http://localhost:5174`
-- `http://127.0.0.1:3000`
-- `http://127.0.0.1:5173`
-- `http://127.0.0.1:5174`
+### Current Tradeoffs
 
-You can still override this with `FRONTEND_URL` in backend env if you want a single explicit origin.
-
-## Documentation Added in Code
-
-- `Frontend/src/features/auth/.md`
-  - auth flow notes
-- inline comments were added in a few places where behavior was not obvious
-
-## Known Follow-Up Ideas
-
-- make registration fail loudly if verification email cannot be sent
-- replace the simple backend verify-email success page with a frontend route
-- add logout flow and protected routes
-- add forgot-password backend and frontend flow
-- store backend API URL in frontend env instead of hardcoding localhost
+- frontend API and socket URLs are still hardcoded for local development
+- logout flow has not been added yet
+- the dashboard is still a shell page and does not yet render chat UI
 
 ## Quick Run Checklist
 
 ### Backend
 
-1. Set env values in `Backend/.env`
-2. Run backend
-3. Confirm server runs on port `5000`
+1. Add env values in `Backend/.env`.
+2. Run the backend server.
+3. Confirm port `5000` is active.
+4. Confirm the server logs both the Express startup and Socket.IO startup messages.
 
 ### Frontend
 
-1. Run frontend dev server
-2. Open `/register`
-3. Create account
-4. Check email for verification link
-5. Open `/login`
-6. Login after verification
+1. Run the Vite frontend.
+2. Open `/register` and create an account.
+3. Verify the account through email.
+4. Open `/login` and sign in.
+5. Confirm the app redirects to `/`.
+6. Confirm the browser console shows `Connected to Socket.IO server`.
 
 ## Summary
 
-The project now has a working auth foundation with:
+The project currently has:
 
-- custom polished auth UI
-- connected login and register forms
-- Redux-backed auth state
-- backend validation and email verification
-- working Gmail transporter
-- local-development CORS support
+- a working auth flow with verification
+- Redux-backed user state
+- protected dashboard routing
+- Socket.IO wired between frontend and backend
+- a shared auth layout and reusable auth UI
 
-This markdown file is the current project design snapshot based on the work completed today.
+This file is the current design snapshot for the project as of the latest routing and socket integration updates.

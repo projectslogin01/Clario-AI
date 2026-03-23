@@ -1,7 +1,18 @@
-import { initializeSocketConnection } from "../service/chat.socket";
+import { useEffect } from 'react'
 
-export const useChat = ()=>{
-    return{
-        initializeSocketConnection
+import { connectSocket, disconnectSocket } from '../service/chat.socket'
+
+// Keeps the dashboard focused on UI while the hook owns the socket lifecycle.
+export const useChat = (shouldConnect) => {
+  useEffect(() => {
+    if (!shouldConnect) {
+      return undefined
     }
+
+    connectSocket()
+
+    return () => {
+      disconnectSocket()
+    }
+  }, [shouldConnect])
 }
