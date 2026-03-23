@@ -1,0 +1,32 @@
+@use "sass:map";
+@use "./tokens" as *;
+
+@mixin respond($breakpoint) {
+  $value: map.get($breakpoints, $breakpoint);
+
+  @if $value == null {
+    @error "Unknown breakpoint `#{$breakpoint}`.";
+  }
+
+  @media (min-width: $value) {
+    @content;
+  }
+}
+
+@mixin container($max-width: $container-width) {
+  width: min(100% - (#{$space-4} * 2), #{$max-width});
+  margin-inline: auto;
+}
+
+@mixin card-surface {
+  background: color-alpha($color-surface, 0.78);
+  border: 1px solid $color-border;
+  border-radius: $radius-lg;
+  box-shadow: $shadow-soft;
+  backdrop-filter: blur(18px);
+}
+
+@mixin focus-ring($ring-color: $color-accent) {
+  outline: 2px solid color-alpha($ring-color, 0.35);
+  outline-offset: 0.2rem;
+}

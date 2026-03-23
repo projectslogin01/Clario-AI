@@ -1,0 +1,37 @@
+$color-bg: #f4efe6;
+$color-surface: #fffdf9;
+$color-text: #1f1a17;
+$color-muted: #6b625d;
+$color-border: rgba(31, 26, 23, 0.1);
+$color-accent: #0e7490;
+$color-accent-strong: #155e75;
+$shadow-soft: 0 20px 45px rgba(24, 24, 27, 0.08);
+
+$radius-sm: 0.75rem;
+$radius-md: 1.25rem;
+$radius-lg: 2rem;
+
+$space-1: 0.25rem;
+$space-2: 0.5rem;
+$space-3: 0.75rem;
+$space-4: 1rem;
+$space-5: 1.5rem;
+$space-6: 2rem;
+$space-8: 3rem;
+$space-10: 4rem;
+
+$container-width: 72rem;
+
+$breakpoints: (
+  sm: 36rem,
+  md: 48rem,
+  lg: 64rem,
+  xl: 80rem,
+);
+
+$ease-standard: cubic-bezier(0.22, 1, 0.36, 1);
+$ease-fluid: cubic-bezier(0.16, 1, 0.3, 1);
+$ease-float: cubic-bezier(0.34, 1.56, 0.64, 1);
+$duration-fast: 180ms;
+$duration-base: 320ms;
+$duration-slow: 520ms;

@@ -1,0 +1,89 @@
+@use "../abstracts" as *;
+
+:root {
+  color-scheme: light;
+  font-family: "Space Grotesk", "Segoe UI", sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  --bg-base: #f7f3ed;
+  --bg-glow-primary: rgba(188, 205, 167, 0.34);
+  --bg-glow-secondary: rgba(243, 222, 203, 0.62);
+  --panel-bg: rgba(255, 255, 255, 0.78);
+  --panel-border: rgba(199, 206, 216, 0.42);
+  --panel-highlight: rgba(255, 255, 255, 0.42);
+  --badge-bg: rgba(248, 251, 246, 0.96);
+  --badge-border: rgba(191, 203, 183, 0.78);
+  --field-bg: rgba(255, 255, 255, 0.92);
+  --field-border: rgba(200, 207, 218, 0.78);
+  --checkbox-border: rgba(188, 197, 209, 0.92);
+  --control-bg: rgba(255, 255, 255, 0.94);
+  --toggle-bg: rgba(255, 255, 255, 0.92);
+  --toggle-icon: #6b7385;
+  --text-primary: #1f2635;
+  --text-secondary: #70788c;
+  --text-muted: #98a1b2;
+  --accent: #89a071;
+  --accent-strong: #7a9262;
+  --accent-contrast: #ffffff;
+  --accent-rgb: 137, 160, 113;
+  --divider: rgba(200, 207, 218, 0.7);
+  --shadow-panel: 0 30px 80px rgba(149, 159, 176, 0.2);
+  --shadow-soft: 0 12px 28px rgba(153, 162, 178, 0.12);
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg-base: #0b1020;
+  --bg-glow-primary: rgba(50, 72, 130, 0.34);
+  --bg-glow-secondary: rgba(76, 56, 146, 0.28);
+  --panel-bg: rgba(23, 30, 50, 0.82);
+  --panel-border: rgba(54, 68, 103, 0.42);
+  --panel-highlight: rgba(255, 255, 255, 0.04);
+  --badge-bg: rgba(31, 39, 65, 0.94);
+  --badge-border: rgba(70, 84, 124, 0.5);
+  --field-bg: rgba(22, 29, 48, 0.92);
+  --field-border: rgba(63, 77, 113, 0.62);
+  --checkbox-border: rgba(91, 108, 151, 0.92);
+  --control-bg: rgba(22, 29, 48, 0.94);
+  --toggle-bg: rgba(25, 33, 54, 0.94);
+  --toggle-icon: #d6dcff;
+  --text-primary: #f4f6ff;
+  --text-secondary: #a5aec8;
+  --text-muted: #7180a8;
+  --accent: #a69fdf;
+  --accent-strong: #b8b1f0;
+  --accent-contrast: #151829;
+  --accent-rgb: 166, 159, 223;
+  --divider: rgba(67, 80, 116, 0.84);
+  --shadow-panel: 0 34px 84px rgba(2, 6, 20, 0.46);
+  --shadow-soft: 0 14px 28px rgba(2, 6, 20, 0.16);
+}
+
+body {
+  min-width: 320px;
+  color: var(--text-primary);
+  background: var(--bg-base);
+  transition:
+    background-color 420ms $ease-standard,
+    color 420ms $ease-standard;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  @include focus-ring();
+}
