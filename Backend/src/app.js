@@ -3,6 +3,7 @@ import cors from "cors";
 import cookieParser from "cookie-parser";
 import authRouter from "./routes/auth.routes.js";
 import morgan from "morgan";
+import chatRouter from "./routes/chat.routes.js";
 
 const app = express();
 // These origins cover the common local dev ports used by Vite and other frontend setups.
@@ -42,5 +43,6 @@ app.get("/", (req, res) => {
 });
 
 app.use("/api/auth", authRouter);
+app.use("/api/chats", chatRouter);
 
 export default app;
