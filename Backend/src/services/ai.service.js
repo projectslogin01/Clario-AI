@@ -13,8 +13,7 @@ const NVIDIA_MODEL_DEFAULTS = Object.freeze({
         defaults: {
             temperature: 0.6,
             topP: 0.7,
-            maxTokens: 4096,
-            enableThinking: false
+            maxTokens: 4096
         }
     },
     minimax: {
@@ -24,8 +23,7 @@ const NVIDIA_MODEL_DEFAULTS = Object.freeze({
         defaults: {
             temperature: 1,
             topP: 0.95,
-            maxTokens: 8192,
-            enableThinking: false
+            maxTokens: 8192
         }
     },
     qwen: {
@@ -313,9 +311,9 @@ function buildModelKwargs({
         modelKwargs.repetition_penalty = repetitionPenalty;
     }
 
-    if (typeof enableThinking === "boolean") {
+    if (enableThinking) {
         modelKwargs.chat_template_kwargs = {
-            enable_thinking: enableThinking
+            enable_thinking: true
         };
     }
 
