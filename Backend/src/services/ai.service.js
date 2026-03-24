@@ -4,46 +4,29 @@ import { ChatOpenAI } from "@langchain/openai";
 const DEFAULT_PROVIDER = "nvidia";
 const NVIDIA_BASE_URL =
     process.env.NVIDIA_BASE_URL || "https://integrate.api.nvidia.com/v1";
+const DEFAULT_SYSTEM_PROMPT =
+    "Answer directly with the final answer only. Do not reveal chain-of-thought, reasoning, or <think> tags.";
+const MAX_COMPLETION_TOKENS_CAP = 1024;
+const MODEL_INVOKE_TIMEOUT_MS = 45000;
+const MODEL_STREAM_CONNECT_TIMEOUT_MS = 20000;
+const MODEL_STREAM_IDLE_TIMEOUT_MS = 20000;
 
 const NVIDIA_MODEL_DEFAULTS = Object.freeze({
-    deepseek: {
-        id: "deepseek-ai/deepseek-r1-distill-qwen-32b",
-        label: "DeepSeek R1 Distill Qwen 32B",
-        apiKeyEnvVar: "DEEPSEEK_API_KEY",
-        defaults: {
-            temperature: 0.6,
-            topP: 0.7,
-            maxTokens: 4096
-        }
-    },
     minimax: {
         id: "minimaxai/minimax-m2.5",
         label: "MiniMax M2.5",
         apiKeyEnvVar: "MINIMAX_API_KEY",
         defaults: {
-            temperature: 1,
-            topP: 0.95,
-            maxTokens: 8192
-        }
-    },
-    qwen: {
-        id: "qwen/qwen3.5-397b-a17b",
-        label: "Qwen 3.5 397B A17B",
-        apiKeyEnvVar: "QWEN_API_KEY",
-        defaults: {
             temperature: 0.6,
             topP: 0.95,
-            maxTokens: 16384,
-            topK: 20,
-            presencePenalty: 0,
-            repetitionPenalty: 1,
-            enableThinking: true
+            maxTokens: 256
         }
     }
 });
 
-const RECOVERY_MODEL = NVIDIA_MODEL_DEFAULTS.minimax;
-const DEFAULT_MODEL_ID = RECOVERY_MODEL.id;
+const ACTIVE_MODEL = NVIDIA_MODEL_DEFAULTS.minimax;
+const DEFAULT_MODEL_ID = ACTIVE_MODEL.id;
+const MODEL_RECOVERY_SEQUENCE = [ ACTIVE_MODEL ];
 
 export class AiServiceError extends Error {
     constructor(message, statusCode = 500) {
@@ -97,6 +80,16 @@ function normalizeBoolean(value, fallback) {
     return fallback;
 }
 
+function normalizeMaxTokens(value, fallback) {
+    const normalizedValue = Math.round(normalizeNumber(value, fallback));
+
+    if (!Number.isFinite(normalizedValue) || normalizedValue <= 0) {
+        return Math.min(fallback, MAX_COMPLETION_TOKENS_CAP);
+    }
+
+    return Math.min(normalizedValue, MAX_COMPLETION_TOKENS_CAP);
+}
+
 function findModelConfigById(modelId) {
     return Object.values(NVIDIA_MODEL_DEFAULTS).find(
         (config) => config.id === modelId
@@ -105,24 +98,19 @@ function findModelConfigById(modelId) {
 
 function resolveModelConfig(requestedModel) {
     if (!requestedModel) {
-        return findModelConfigById(DEFAULT_MODEL_ID) || {
-            ...RECOVERY_MODEL,
-            id: DEFAULT_MODEL_ID,
-            label: "Default NVIDIA model"
-        };
+        return ACTIVE_MODEL;
     }
 
     const normalizedModel = requestedModel.trim().toLowerCase();
 
-    if (NVIDIA_MODEL_DEFAULTS[normalizedModel]) {
-        return NVIDIA_MODEL_DEFAULTS[normalizedModel];
+    if (
+        normalizedModel === "minimax" ||
+        requestedModel.trim() === ACTIVE_MODEL.id
+    ) {
+        return ACTIVE_MODEL;
     }
 
-    return findModelConfigById(requestedModel.trim()) || {
-        ...RECOVERY_MODEL,
-        id: requestedModel.trim(),
-        label: requestedModel.trim()
-    };
+    return ACTIVE_MODEL;
 }
 
 function extractTextContent(content) {
@@ -320,6 +308,20 @@ function buildModelKwargs({
     return Object.keys(modelKwargs).length > 0 ? modelKwargs : undefined;
 }
 
+function withTimeout(promise, createError, timeoutMs) {
+    let timeoutId;
+
+    const timeoutPromise = new Promise((resolve, reject) => {
+        timeoutId = setTimeout(() => {
+            reject(createError());
+        }, timeoutMs);
+    });
+
+    return Promise.race([ promise, timeoutPromise ]).finally(() => {
+        clearTimeout(timeoutId);
+    });
+}
+
 function createNvidiaChatModel({
     modelConfig,
     temperature,
@@ -336,7 +338,7 @@ function createNvidiaChatModel({
         model: modelConfig.id,
         temperature: normalizeNumber(temperature, defaults.temperature),
         topP: normalizeNumber(topP, defaults.topP),
-        maxCompletionTokens: normalizeNumber(maxTokens, defaults.maxTokens),
+        maxCompletionTokens: normalizeMaxTokens(maxTokens, defaults.maxTokens),
         presencePenalty: normalizeNumber(
             presencePenalty,
             defaults.presencePenalty
@@ -360,16 +362,32 @@ function createNvidiaChatModel({
 }
 
 function buildMessages({ message, systemPrompt }) {
-    return systemPrompt?.trim()
-        ? [
-            new SystemMessage(systemPrompt.trim()),
-            new HumanMessage(message)
-        ]
-        : [new HumanMessage(message)];
+    const normalizedSystemPrompt = systemPrompt?.trim() || DEFAULT_SYSTEM_PROMPT;
+
+    return [
+        new SystemMessage(normalizedSystemPrompt),
+        new HumanMessage(message)
+    ];
 }
 
 function shouldAttemptRecovery(primaryModelConfig) {
-    return primaryModelConfig.id !== RECOVERY_MODEL.id;
+    return getRecoveryModels(primaryModelConfig).length > 1;
+}
+
+function getRecoveryModels(primaryModelConfig) {
+    const candidates = [ primaryModelConfig, ...MODEL_RECOVERY_SEQUENCE ].filter(
+        Boolean
+    );
+    const seenIds = new Set();
+
+    return candidates.filter((config) => {
+        if (seenIds.has(config.id)) {
+            return false;
+        }
+
+        seenIds.add(config.id);
+        return true;
+    });
 }
 
 function buildResponsePayload({
@@ -391,12 +409,34 @@ function buildResponsePayload({
         provider,
         requestedModel,
         model: modelConfig.id,
-        text: splitContent.visible || extractTextContent(response.content),
+        text: splitContent.visible,
         reasoning,
         defaults: modelConfig.defaults,
         fallbackUsed: Boolean(fallbackFrom),
         fallbackFrom: fallbackFrom?.id || null
     };
+}
+
+function normalizeProviderError(error, modelConfig) {
+    if (error instanceof AiServiceError) {
+        return error;
+    }
+
+    if (error?.message === "terminated") {
+        return new AiServiceError(
+            `Model "${modelConfig.id}" connection was terminated by NVIDIA. Please retry the request.`,
+            502
+        );
+    }
+
+    if (error?.name === "AbortError") {
+        return new AiServiceError(
+            `Model "${modelConfig.id}" request was aborted before completion.`,
+            504
+        );
+    }
+
+    return error;
 }
 
 async function invokeModel({
@@ -424,15 +464,37 @@ async function invokeModel({
         enableThinking
     });
 
-    const response = await chatModel.invoke(messages);
+    let response;
 
-    return buildResponsePayload({
+    try {
+        response = await withTimeout(
+            chatModel.invoke(messages),
+            () => new AiServiceError(
+                `Model "${modelConfig.id}" did not finish within ${MODEL_INVOKE_TIMEOUT_MS / 1000} seconds.`,
+                504
+            ),
+            MODEL_INVOKE_TIMEOUT_MS
+        );
+    } catch (error) {
+        throw normalizeProviderError(error, modelConfig);
+    }
+
+    const payload = buildResponsePayload({
         provider,
         requestedModel,
         modelConfig,
         response,
         fallbackFrom
     });
+
+    if (!payload.text) {
+        throw new AiServiceError(
+            `Model "${modelConfig.id}" returned no visible answer.`,
+            502
+        );
+    }
+
+    return payload;
 }
 
 function createNormalizedRequest(options) {
@@ -524,27 +586,37 @@ export async function generateChatReply({
         enableThinking
     });
 
-    try {
-        return await invokeModel({
-            ...request,
-            modelConfig: request.resolvedModel
-        });
-    } catch (error) {
-        if (!shouldAttemptRecovery(request.resolvedModel)) {
-            throw error;
+    const recoveryModels = getRecoveryModels(request.resolvedModel);
+    let lastError;
+
+    for (const modelConfig of recoveryModels) {
+        try {
+            return await invokeModel({
+                ...request,
+                modelConfig,
+                fallbackFrom:
+                    modelConfig.id === request.resolvedModel.id
+                        ? undefined
+                        : request.resolvedModel
+            });
+        } catch (error) {
+            lastError = error;
+
+            if (
+                !shouldAttemptRecovery(request.resolvedModel) ||
+                modelConfig.id === recoveryModels[recoveryModels.length - 1].id
+            ) {
+                throw error;
+            }
+
+            console.error(
+                `Model "${modelConfig.id}" failed. Trying next recovery model.`,
+                error
+            );
         }
-
-        console.error(
-            `Primary model "${request.resolvedModel.id}" failed. Falling back to "${RECOVERY_MODEL.id}".`,
-            error
-        );
-
-        return invokeModel({
-            ...request,
-            modelConfig: RECOVERY_MODEL,
-            fallbackFrom: request.resolvedModel
-        });
     }
+
+    throw lastError;
 }
 
 async function* streamModel({
@@ -573,7 +645,20 @@ async function* streamModel({
         enableThinking
     });
 
-    const stream = await chatModel.stream(messages, { signal });
+    let stream;
+
+    try {
+        stream = await withTimeout(
+            chatModel.stream(messages, { signal }),
+            () => new AiServiceError(
+                `Model "${modelConfig.id}" did not start streaming within ${MODEL_STREAM_CONNECT_TIMEOUT_MS / 1000} seconds.`,
+                504
+            ),
+            MODEL_STREAM_CONNECT_TIMEOUT_MS
+        );
+    } catch (error) {
+        throw normalizeProviderError(error, modelConfig);
+    }
     let streamedText = "";
     let streamedReasoning = "";
     const thinkingParser = createThinkingParser();
@@ -590,7 +675,29 @@ async function* streamModel({
         }
     };
 
-    for await (const chunk of stream) {
+    const iterator = stream[Symbol.asyncIterator]();
+
+    while (true) {
+        let nextChunk;
+
+        try {
+            nextChunk = await withTimeout(
+                iterator.next(),
+                () => new AiServiceError(
+                    `Model "${modelConfig.id}" stopped responding for ${MODEL_STREAM_IDLE_TIMEOUT_MS / 1000} seconds.`,
+                    504
+                ),
+                MODEL_STREAM_IDLE_TIMEOUT_MS
+            );
+        } catch (error) {
+            throw normalizeProviderError(error, modelConfig);
+        }
+
+        if (nextChunk.done) {
+            break;
+        }
+
+        const chunk = nextChunk.value;
         const text = extractTextDelta(chunk.content);
         const parsedText = thinkingParser.push(text);
         const reasoning = `${parsedText.reasoning}${extractReasoningContent(chunk, false)}`;
@@ -689,39 +796,48 @@ export async function* streamChatReply({
         enableThinking
     });
 
-    let emittedContent = false;
+    const recoveryModels = getRecoveryModels(request.resolvedModel);
+    let lastError;
 
-    try {
-        for await (const event of streamModel({
-            ...request,
-            modelConfig: request.resolvedModel,
-            signal
-        })) {
-            if (event.type === "token" || event.type === "reasoning") {
-                emittedContent = true;
+    for (const modelConfig of recoveryModels) {
+        let emittedContent = false;
+
+        try {
+            for await (const event of streamModel({
+                ...request,
+                modelConfig,
+                fallbackFrom:
+                    modelConfig.id === request.resolvedModel.id
+                        ? undefined
+                        : request.resolvedModel,
+                signal
+            })) {
+                if (event.type === "token" || event.type === "reasoning") {
+                    emittedContent = true;
+                }
+
+                yield event;
             }
 
-            yield event;
-        }
+            return;
+        } catch (error) {
+            lastError = error;
 
-        return;
-    } catch (error) {
-        if (emittedContent || !shouldAttemptRecovery(request.resolvedModel)) {
-            throw error;
-        }
+            if (
+                emittedContent ||
+                modelConfig.id === recoveryModels[recoveryModels.length - 1].id
+            ) {
+                throw error;
+            }
 
-        console.error(
-            `Primary stream model "${request.resolvedModel.id}" failed before emitting content. Falling back to "${RECOVERY_MODEL.id}".`,
-            error
-        );
+            console.error(
+                `Primary stream model "${modelConfig.id}" failed before emitting content. Trying next recovery model.`,
+                error
+            );
+        }
     }
 
-    yield* streamModel({
-        ...request,
-        modelConfig: RECOVERY_MODEL,
-        fallbackFrom: request.resolvedModel,
-        signal
-    });
+    throw lastError;
 }
 
 export { NVIDIA_BASE_URL };

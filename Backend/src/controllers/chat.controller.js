@@ -6,34 +6,11 @@ import {
 } from "../services/ai.service.js";
 
 function getChatRequestOptions(req) {
-    const {
-        message,
-        model,
-        provider,
-        systemPrompt,
-        temperature,
-        topP,
-        maxTokens,
-        maxCompletionTokens,
-        topK,
-        presencePenalty,
-        repetitionPenalty,
-        enableThinking
-    } = req.body;
+    const { message, model } = req.body;
 
     return {
         message,
-        model,
-        provider,
-        systemPrompt,
-        temperature,
-        topP,
-        maxTokens,
-        maxCompletionTokens,
-        topK,
-        presencePenalty,
-        repetitionPenalty,
-        enableThinking
+        model
     };
 }
 
@@ -60,9 +37,7 @@ export async function sendStreamMessage(req, res) {
             return res.status(400).json({
                 success: false,
                 message: "Message is required.",
-                data: {
-                    availableModels: getAvailableModels()
-                }
+                data: null
             });
         }
 
@@ -114,9 +89,7 @@ export async function sendStreamMessage(req, res) {
         return res.status(statusCode).json({
             success: false,
             message: error.message || "Failed to generate AI response.",
-            data: {
-                availableModels: getAvailableModels()
-            }
+            data: null
         });
     } finally {
         if (handleClose) {
@@ -133,9 +106,7 @@ export async function sendMessage(req, res) {
             return res.status(400).json({
                 success: false,
                 message: "Message is required.",
-                data: {
-                    availableModels: getAvailableModels()
-                }
+                data: null
             });
         }
 
@@ -145,8 +116,10 @@ export async function sendMessage(req, res) {
             success: true,
             message: "AI response generated successfully",
             data: {
-                ...response,
-                availableModels: getAvailableModels()
+                model: response.model,
+                text: response.text,
+                fallbackUsed: response.fallbackUsed,
+                fallbackFrom: response.fallbackFrom
             }
         });
     } catch (error) {
@@ -159,9 +132,7 @@ export async function sendMessage(req, res) {
         return res.status(statusCode).json({
             success: false,
             message: error.message || "Failed to generate AI response.",
-            data: {
-                availableModels: getAvailableModels()
-            }
+            data: null
         });
     }
 }
