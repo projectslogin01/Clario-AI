@@ -236,11 +236,18 @@ export function getAvailableModels() {
 }
 
 /** Standard JSON chat response with optional follow-up history. */
-export async function generateChatReply({ message, history = [] }) {
+export async function generateChatReply({
+    message,
+    history = [],
+    generateTitle: shouldGenerateTitle = true
+}) {
     try {
         const normalizedMessage = requireMessage(message);
+        const titlePromise = shouldGenerateTitle
+            ? generateTitle(normalizedMessage)
+            : Promise.resolve(null);
         const [ title, response ] = await Promise.all([
-            generateTitle(normalizedMessage),
+            titlePromise,
             withTimeout(
                 createChatModel().invoke(
                     createMessages(normalizedMessage, SYSTEM_PROMPT, history)
@@ -265,10 +272,17 @@ export async function generateChatReply({ message, history = [] }) {
 }
 
 /** SSE stream used by `/api/chats/message/stream` with optional history. */
-export async function* streamChatReply({ message, history = [], signal }) {
+export async function* streamChatReply({
+    message,
+    history = [],
+    generateTitle: shouldGenerateTitle = true,
+    signal
+}) {
     const stripThink = createThinkStripper();
     const normalizedMessage = requireMessage(message);
-    const titlePromise = generateTitle(normalizedMessage);
+    const titlePromise = shouldGenerateTitle
+        ? generateTitle(normalizedMessage)
+        : Promise.resolve(null);
     let stream;
 
     try {
