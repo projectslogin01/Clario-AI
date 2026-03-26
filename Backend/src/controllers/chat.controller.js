@@ -25,8 +25,8 @@ import {
 const DEFAULT_CHAT_TITLE = "New Chat";
 
 const getChatRequestOptions = (req) => {
-    const { message, chatId } = req.body;
-    return { message, chatId };
+    const { message, chatId, model } = req.body;
+    return { message, chatId, model };
 };
 
 const getChatIdParam = (req) => req.params.chatId;
@@ -191,17 +191,25 @@ export async function deleteChat(req, res) {
 }
 
 export async function getModels(req, res) {
-    return res.status(200).json({
-        success: true,
-        message: "Available AI models fetched successfully",
-        data: getAvailableModels()
-    });
+    try {
+        return res.status(200).json({
+            success: true,
+            message: "Available AI models fetched successfully",
+            data: getAvailableModels()
+        });
+    } catch (error) {
+        return res.status(getErrorStatus(error)).json({
+            success: false,
+            message: error.message || "Failed to fetch available AI models.",
+            data: null
+        });
+    }
 }
 
 export async function sendMessage(req, res) {
     try {
         const userId = requireUserId(req);
-        const { chatId, message } = getChatRequestOptions(req);
+        const { chatId, message, model } = getChatRequestOptions(req);
         const content = requireMessage(message);
         const chat = await findOrCreateChat(userId, chatId);
         const history = await getChatHistory(chat._id);
@@ -209,7 +217,8 @@ export async function sendMessage(req, res) {
         const aiReply = await generateChatReply({
             message: content,
             history,
-            generateTitle: chat.title === DEFAULT_CHAT_TITLE
+            generateTitle: chat.title === DEFAULT_CHAT_TITLE,
+            model
         });
 
         await setChatTitle(chat, aiReply.title);
@@ -251,7 +260,7 @@ export async function sendStreamMessage(req, res) {
 
     try {
         const userId = requireUserId(req);
-        const { chatId, message } = getChatRequestOptions(req);
+        const { chatId, message, model } = getChatRequestOptions(req);
         content = requireMessage(message);
         chat = await findOrCreateChat(userId, chatId);
         history = await getChatHistory(chat._id);
@@ -272,6 +281,7 @@ export async function sendStreamMessage(req, res) {
             message: content,
             history,
             generateTitle: shouldGenerateTitle,
+            model,
             signal: abortController.signal
         })) {
             if (event.type === "meta") {
@@ -332,7 +342,8 @@ export async function sendStreamMessage(req, res) {
                 const aiReply = await generateChatReply({
                     message: content,
                     history,
-                    generateTitle: shouldGenerateTitle
+                    generateTitle: shouldGenerateTitle,
+                    model
                 });
 
                 await setChatTitle(chat, aiReply.title);
@@ -342,7 +353,7 @@ export async function sendStreamMessage(req, res) {
 
                 if (!sentMeta) {
                     writeSseEvent(res, "meta", {
-                        provider: "nvidia",
+                        provider: "openai",
                         model: aiReply.model,
                         title: null,
                         fallbackUsed: true,
@@ -356,7 +367,7 @@ export async function sendStreamMessage(req, res) {
                 }
 
                 writeSseEvent(res, "done", {
-                    provider: "nvidia",
+                    provider: "openai",
                     model: aiReply.model,
                     title: chat.title,
                     text: aiReply.text,

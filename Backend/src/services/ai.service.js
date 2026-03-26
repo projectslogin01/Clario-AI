@@ -6,23 +6,42 @@ import {
 import { ChatOpenAI } from "@langchain/openai";
 
 /**
- * NVIDIA chat service.
+ * OpenAI chat service powered by LangChain's ChatOpenAI integration.
  *
  * Env:
- * - MINIMAX_API_KEY or NVIDIA_API_KEY
- * - NVIDIA_BASE_URL (optional, defaults to NVIDIA hosted endpoint)
+ * - OPENAI_API_KEY
+ * - OPENAI_MODEL (optional, defaults to GPT-5.1)
+ * - OPENAI_TITLE_MODEL (optional, defaults to GPT-5 mini)
  */
 
-const PROVIDER = "nvidia";
-const NVIDIA_BASE_URL =
-    process.env.NVIDIA_BASE_URL || "https://integrate.api.nvidia.com/v1";
-const MODEL = Object.freeze({
-    alias: "minimax",
-    id: "minimaxai/minimax-m2.5",
-    label: "MiniMax M2.5",
-    apiKeyEnvVar: "MINIMAX_API_KEY",
-    defaults: { temperature: 0.6, topP: 0.95, maxTokens: 1400 }
-});
+const PROVIDER = "openai";
+const MODEL_REGISTRY = Object.freeze([
+    {
+        alias: "gpt-5.1",
+        id: "gpt-5.1",
+        label: "GPT-5.1",
+        apiKeyEnvVar: "OPENAI_API_KEY",
+        defaults: { maxTokens: 1800 }
+    },
+    {
+        alias: "gpt-5-mini",
+        id: "gpt-5-mini",
+        label: "GPT-5 mini",
+        apiKeyEnvVar: "OPENAI_API_KEY",
+        defaults: { maxTokens: 1400 }
+    },
+    {
+        alias: "gpt-4.1",
+        id: "gpt-4.1",
+        label: "GPT-4.1",
+        apiKeyEnvVar: "OPENAI_API_KEY",
+        defaults: { temperature: 0.6, maxTokens: 1400 }
+    }
+]);
+const DEFAULT_MODEL_ENV_VAR = "OPENAI_MODEL";
+const TITLE_MODEL_ENV_VAR = "OPENAI_TITLE_MODEL";
+const DEFAULT_MODEL_ID = "gpt-5.1";
+const DEFAULT_TITLE_MODEL_ID = "gpt-5-mini";
 const SYSTEM_PROMPT =
     [
         "You are a helpful AI assistant.",
@@ -47,12 +66,61 @@ export class AiServiceError extends Error {
     }
 }
 
+const MODEL_LOOKUP = new Map(
+    MODEL_REGISTRY.flatMap((modelConfig) => [
+        [ modelConfig.id, modelConfig ],
+        [ modelConfig.alias, modelConfig ]
+    ])
+);
+
+const getSupportedModelList = () =>
+    MODEL_REGISTRY.map((modelConfig) => `"${modelConfig.alias}"`).join(", ");
+
+const getConfiguredModel = (envVarName, fallbackModelId) => {
+    const configuredModel = process.env[envVarName]?.trim();
+
+    if (!configuredModel) {
+        return MODEL_LOOKUP.get(fallbackModelId);
+    }
+
+    const modelConfig = MODEL_LOOKUP.get(configuredModel);
+
+    if (!modelConfig) {
+        throw new AiServiceError(
+            `${envVarName} must be one of: ${getSupportedModelList()}.`,
+            500
+        );
+    }
+
+    return modelConfig;
+};
+
+const resolveModel = (requestedModel) => {
+    if (!requestedModel?.trim()) {
+        return getConfiguredModel(DEFAULT_MODEL_ENV_VAR, DEFAULT_MODEL_ID);
+    }
+
+    const modelConfig = MODEL_LOOKUP.get(requestedModel.trim());
+
+    if (!modelConfig) {
+        throw new AiServiceError(
+            `Unsupported model "${requestedModel}". Choose one of: ${getSupportedModelList()}.`,
+            400
+        );
+    }
+
+    return modelConfig;
+};
+
+const getTitleModel = () =>
+    getConfiguredModel(TITLE_MODEL_ENV_VAR, DEFAULT_TITLE_MODEL_ID);
+
 const getApiKey = () => {
-    const apiKey = process.env[MODEL.apiKeyEnvVar] || process.env.NVIDIA_API_KEY;
+    const apiKey = process.env.OPENAI_API_KEY;
 
     if (!apiKey) {
         throw new AiServiceError(
-            `${MODEL.apiKeyEnvVar} is missing. Add ${MODEL.apiKeyEnvVar} or NVIDIA_API_KEY to Backend/.env.`,
+            "OPENAI_API_KEY is missing. Add OPENAI_API_KEY to backend/.env.",
             500
         );
     }
@@ -97,14 +165,14 @@ const withTimeout = (promise, createError, timeoutMs) => {
     return Promise.race([ promise, timeout ]).finally(() => clearTimeout(timeoutId));
 };
 
-const normalizeError = (error) => {
+const normalizeError = (error, modelConfig) => {
     if (error instanceof AiServiceError) {
         return error;
     }
 
     if (error?.message === "terminated") {
         return new AiServiceError(
-            `Model "${MODEL.id}" connection was terminated by NVIDIA. Please retry the request.`,
+            `Model "${modelConfig.id}" connection was terminated before completion. Please retry the request.`,
             502
         );
     }
@@ -116,14 +184,23 @@ const normalizeError = (error) => {
     return error;
 };
 
-const createChatModel = (maxCompletionTokens = MODEL.defaults.maxTokens) =>
-    new ChatOpenAI({
-        model: MODEL.id,
-        temperature: MODEL.defaults.temperature,
-        topP: MODEL.defaults.topP,
-        maxCompletionTokens,
-        configuration: { apiKey: getApiKey(), baseURL: NVIDIA_BASE_URL }
-    });
+const createChatModel = (
+    modelConfig,
+    maxCompletionTokens = modelConfig.defaults.maxTokens
+) => {
+    getApiKey();
+
+    const modelOptions = {
+        model: modelConfig.id,
+        maxCompletionTokens
+    };
+
+    if (typeof modelConfig.defaults.temperature === "number") {
+        modelOptions.temperature = modelConfig.defaults.temperature;
+    }
+
+    return new ChatOpenAI(modelOptions);
+};
 
 const normalizeHistory = (history = []) =>
     Array.isArray(history)
@@ -151,8 +228,8 @@ const createMessages = (
     new HumanMessage(message)
 ];
 
-const createReply = (title, text) => ({
-    model: MODEL.id,
+const createReply = (modelConfig, title, text) => ({
+    model: modelConfig.id,
     title,
     text,
     fallbackUsed: false,
@@ -173,9 +250,13 @@ const cleanTitle = (title, message) =>
         .slice(0, 60) || fallbackTitle(message);
 
 const generateTitle = async (message) => {
+    const titleModel = getTitleModel();
+
     try {
         const response = await withTimeout(
-            createChatModel(24).invoke(createMessages(message, TITLE_PROMPT)),
+            createChatModel(titleModel, 24).invoke(
+                createMessages(message, TITLE_PROMPT)
+            ),
             () => new AiServiceError("Chat title generation timed out.", 504),
             TITLE_TIMEOUT_MS
         );
@@ -228,26 +309,30 @@ const createThinkStripper = () => {
     };
 };
 
-/** Returns the single model exposed by this backend. */
+/** Returns the curated OpenAI model list exposed by this backend. */
 export function getAvailableModels() {
-    return [
-        {
-            alias: MODEL.alias,
-            model: MODEL.id,
-            label: MODEL.label,
-            apiKeyEnvVar: MODEL.apiKeyEnvVar,
-            defaults: MODEL.defaults,
-            provider: PROVIDER
-        }
-    ];
+    const defaultModel = getConfiguredModel(DEFAULT_MODEL_ENV_VAR, DEFAULT_MODEL_ID);
+
+    return MODEL_REGISTRY.map((modelConfig) => ({
+        alias: modelConfig.alias,
+        model: modelConfig.id,
+        label: modelConfig.label,
+        apiKeyEnvVar: modelConfig.apiKeyEnvVar,
+        defaults: modelConfig.defaults,
+        provider: PROVIDER,
+        isDefault: modelConfig.id === defaultModel.id
+    }));
 }
 
 /** Standard JSON chat response with optional follow-up history. */
 export async function generateChatReply({
     message,
     history = [],
-    generateTitle: shouldGenerateTitle = true
+    generateTitle: shouldGenerateTitle = true,
+    model
 }) {
+    const modelConfig = resolveModel(model);
+
     try {
         const normalizedMessage = requireMessage(message);
         const titlePromise = shouldGenerateTitle
@@ -256,11 +341,11 @@ export async function generateChatReply({
         const [ title, response ] = await Promise.all([
             titlePromise,
             withTimeout(
-                createChatModel().invoke(
+                createChatModel(modelConfig).invoke(
                     createMessages(normalizedMessage, SYSTEM_PROMPT, history)
                 ),
                 () => new AiServiceError(
-                    `Model "${MODEL.id}" did not finish within ${REQUEST_TIMEOUT_MS / 1000} seconds.`,
+                    `Model "${modelConfig.id}" did not finish within ${REQUEST_TIMEOUT_MS / 1000} seconds.`,
                     504
                 ),
                 REQUEST_TIMEOUT_MS
@@ -269,12 +354,12 @@ export async function generateChatReply({
         const text = cleanText(response.content);
 
         if (!text) {
-            throw new AiServiceError(`Model "${MODEL.id}" returned no visible answer.`, 502);
+            throw new AiServiceError(`Model "${modelConfig.id}" returned no visible answer.`, 502);
         }
 
-        return createReply(title, text);
+        return createReply(modelConfig, title, text);
     } catch (error) {
-        throw normalizeError(error);
+        throw normalizeError(error, modelConfig);
     }
 }
 
@@ -283,10 +368,12 @@ export async function* streamChatReply({
     message,
     history = [],
     generateTitle: shouldGenerateTitle = true,
+    model,
     signal
 }) {
     const stripThink = createThinkStripper();
     const normalizedMessage = requireMessage(message);
+    const modelConfig = resolveModel(model);
     const titlePromise = shouldGenerateTitle
         ? generateTitle(normalizedMessage)
         : Promise.resolve(null);
@@ -296,7 +383,7 @@ export async function* streamChatReply({
         type: "meta",
         data: {
             provider: PROVIDER,
-            model: MODEL.id,
+            model: modelConfig.id,
             title: null,
             fallbackUsed: false,
             fallbackFrom: null
@@ -305,18 +392,18 @@ export async function* streamChatReply({
 
     try {
         stream = await withTimeout(
-            createChatModel().stream(
+            createChatModel(modelConfig).stream(
                 createMessages(normalizedMessage, SYSTEM_PROMPT, history),
                 { signal }
             ),
             () => new AiServiceError(
-                `Model "${MODEL.id}" did not start streaming within ${STREAM_START_TIMEOUT_MS / 1000} seconds.`,
+                `Model "${modelConfig.id}" did not start streaming within ${STREAM_START_TIMEOUT_MS / 1000} seconds.`,
                 504
             ),
             STREAM_START_TIMEOUT_MS
         );
     } catch (error) {
-        throw normalizeError(error);
+        throw normalizeError(error, modelConfig);
     }
 
     let fullText = "";
@@ -329,13 +416,13 @@ export async function* streamChatReply({
             next = await withTimeout(
                 iterator.next(),
                 () => new AiServiceError(
-                    `Model "${MODEL.id}" stopped responding for ${STREAM_IDLE_TIMEOUT_MS / 1000} seconds.`,
+                    `Model "${modelConfig.id}" stopped responding for ${STREAM_IDLE_TIMEOUT_MS / 1000} seconds.`,
                     504
                 ),
                 STREAM_IDLE_TIMEOUT_MS
             );
         } catch (error) {
-            throw normalizeError(error);
+            throw normalizeError(error, modelConfig);
         }
 
         if (next.done) {
@@ -361,7 +448,7 @@ export async function* streamChatReply({
     }
 
     if (!fullText.trim()) {
-        throw new AiServiceError(`Model "${MODEL.id}" returned no visible answer.`, 502);
+        throw new AiServiceError(`Model "${modelConfig.id}" returned no visible answer.`, 502);
     }
 
     const title = await titlePromise;
@@ -370,7 +457,7 @@ export async function* streamChatReply({
         type: "done",
         data: {
             provider: PROVIDER,
-            model: MODEL.id,
+            model: modelConfig.id,
             title,
             text: fullText,
             fallbackUsed: false,
@@ -378,5 +465,3 @@ export async function* streamChatReply({
         }
     };
 }
-
-export { NVIDIA_BASE_URL };

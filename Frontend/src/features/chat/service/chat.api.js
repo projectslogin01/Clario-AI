@@ -8,9 +8,10 @@ const api = axios.create({
   withCredentials: true,
 })
 
-const buildChatPayload = ({ chatId, message }) => ({
+const buildChatPayload = ({ chatId, message, model }) => ({
   message,
   ...(chatId ? { chatId } : {}),
+  ...(model ? { model } : {}),
 })
 
 const getJsonErrorMessage = async (response) => {
@@ -41,7 +42,7 @@ export async function getChatMessages(chatId) {
 
 /**
  * Sends a normal chat message and waits for the full AI response.
- * @param {{ message: string, chatId?: string | null }} payload
+ * @param {{ message: string, chatId?: string | null, model?: string | null }} payload
  */
 export async function sendMessage(payload) {
   const response = await api.post('/api/chats/message', buildChatPayload(payload))
@@ -72,11 +73,12 @@ export async function getModels() {
  * @param {{
  *   message: string,
  *   chatId?: string | null,
+ *   model?: string | null,
  *   signal?: AbortSignal,
  *   onEvent?: (event: { event: string, data: any }) => void
  * }} payload
  */
-export async function streamMessage({ chatId, message, onEvent, signal }) {
+export async function streamMessage({ chatId, message, model, onEvent, signal }) {
   const response = await fetch(`${API_BASE_URL}/api/chats/message/stream`, {
     method: 'POST',
     credentials: 'include',
@@ -84,7 +86,7 @@ export async function streamMessage({ chatId, message, onEvent, signal }) {
       Accept: 'text/event-stream',
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify(buildChatPayload({ chatId, message })),
+    body: JSON.stringify(buildChatPayload({ chatId, message, model })),
     signal,
   })
 
