@@ -184,9 +184,12 @@
 }
 
 .dashboard-avatar {
+  position: relative;
   color: #ffffff;
   background:
     linear-gradient(135deg, rgba(var(--accent-rgb), 0.96), var(--accent-strong));
+  overflow: hidden;
+  aspect-ratio: 1 / 1;
 
   &:hover {
     transform: translateY(-2px) scale(1.03);
@@ -195,18 +198,33 @@
 }
 
 .dashboard-avatar__label {
+  position: relative;
+  z-index: 1;
   font-size: 0.82rem;
   font-weight: 700;
   letter-spacing: 0.08em;
 }
 
-.dashboard-avatar__image,
-.dashboard-sidebar__profile-image {
+.dashboard-avatar__image {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
-  display: block;
   object-fit: cover;
+  object-position: center;
   border-radius: inherit;
+  pointer-events: none;
+}
+
+.dashboard-sidebar__profile-image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  border-radius: inherit;
+  pointer-events: none;
 }
 
 .dashboard-main {
@@ -842,6 +860,7 @@
 }
 
 .dashboard-sidebar__profile-avatar {
+  position: relative;
   width: 2.75rem;
   height: 2.75rem;
   display: grid;
@@ -854,6 +873,8 @@
   background:
     linear-gradient(135deg, rgba(var(--accent-rgb), 0.96), var(--accent-strong));
   box-shadow: 0 14px 26px rgba(var(--accent-rgb), 0.18);
+  overflow: hidden;
+  aspect-ratio: 1 / 1;
 }
 
 .dashboard-sidebar__profile-name {
