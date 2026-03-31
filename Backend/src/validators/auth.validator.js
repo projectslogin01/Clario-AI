@@ -45,3 +45,13 @@ export const resendVerificationValidator = [
         .isEmail().withMessage("Please provide a valid email"),
     sendValidationErrors
 ];
+
+export const verifyAccountValidator = [
+    body("email")
+        .trim()
+        .notEmpty().withMessage("Email is required")
+        .isEmail().withMessage("Please provide a valid email"),
+    body("password")
+        .notEmpty().withMessage("Password is required"),
+    sendValidationErrors
+];

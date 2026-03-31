@@ -450,6 +450,40 @@ export async function login(req, res) {
     }
 }
 
+export async function verifyAccount(req, res) {
+    try {
+        const email = String(req.body.email || "").trim().toLowerCase();
+        const password = String(req.body.password || "");
+        const user = await userModel.findOne({ email });
+
+        if (!user) {
+            return sendError(res, 400, "Invalid email or password", "User not found");
+        }
+
+        const passwordMatches = await user.comparePassword(password);
+
+        if (!passwordMatches) {
+            return sendError(res, 400, "Invalid email or password", "Incorrect password");
+        }
+
+        if (!user.verified) {
+            user.verified = true;
+            await user.save();
+        }
+
+        setAuthCookie(res, user);
+
+        return res.status(200).json({
+            success: true,
+            message: "Account verified successfully",
+            user: formatUser(user)
+        });
+    } catch (error) {
+        console.error("Verify account error:", error);
+        return sendError(res, 500, "Internal server error");
+    }
+}
+
 export async function googleAuthStart(req, res) {
     const screen = normalizeGoogleScreen(req.query.screen);
     const googleClient = createGoogleClient(req);

@@ -1,5 +1,5 @@
 import { useDispatch } from 'react-redux'
-import { getGoogleAuthUrl, getme, login, logout, register, resendVerification, updateProfile } from '../service/auth.api'
+import { getGoogleAuthUrl, getme, login, logout, register, resendVerification, updateProfile, verifyAccount } from '../service/auth.api'
 import { setUser, setError, setInitialized, setLoading } from '../auth.slice'
 import { resolveAvatarUrl } from '../../../utils/avatar'
 
@@ -139,6 +139,28 @@ export function useAuth() {
   }
 
   /**
+   * Verifies an account from the login form and signs the user in when credentials match.
+   * @param {{ email: string, password: string }} payload
+   */
+  async function handleVerifyAccount({ email, password }) {
+    try {
+      dispatch(setLoading(true))
+      dispatch(setError(null))
+      const data = await verifyAccount({ email, password })
+      saveSessionHint()
+      dispatch(setUser(normalizeUser(data.user)))
+      dispatch(setInitialized(true))
+      return data
+    } catch (error) {
+      clearSessionHint()
+      dispatch(setError(getApiErrorMessage(error, 'Could not verify account')))
+      return null
+    } finally {
+      dispatch(setLoading(false))
+    }
+  }
+
+  /**
    * Loads the current authenticated user from the backend auth cookie.
    */
   async function handleGetme() {
@@ -232,5 +254,5 @@ export function useAuth() {
     window.location.href = getGoogleAuthUrl(screen)
   }
 
-  return { handleAppStart, handleGetme, handleGoogleLogin, handleLogin, handleLogout, handleRegister, handleResendVerification, handleUpdateProfile }
+  return { handleAppStart, handleGetme, handleGoogleLogin, handleLogin, handleLogout, handleRegister, handleResendVerification, handleUpdateProfile, handleVerifyAccount }
 }

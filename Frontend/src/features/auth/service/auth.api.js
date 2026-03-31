@@ -28,6 +28,16 @@ export async function resendVerification({ email }) {
 }
 
 /**
+ * Verifies an account directly from the login form using matching credentials.
+ * @param {{ email: string, password: string }} payload
+ */
+export async function verifyAccount({ email, password }) {
+  const response = await api.post('/api/auth/verify-account', { email, password })
+
+  return response.data
+}
+
+/**
  * Calls the backend login endpoint.
  * @param {{ email: string, password: string }} payload
  */

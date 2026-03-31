@@ -10,7 +10,7 @@ import { useAuth } from '../hook/useAuth'
 const Login = () => {
   const location = useLocation()
   const navigate = useNavigate()
-  const { handleGoogleLogin, handleLogin, handleResendVerification } = useAuth()
+  const { handleGoogleLogin, handleLogin, handleResendVerification, handleVerifyAccount } = useAuth()
   const { error, loading, user } = useSelector((state) => state.auth)
   const [formData, setFormData] = useState({
     email: '',
@@ -18,7 +18,6 @@ const Login = () => {
   })
   const [successMessage, setSuccessMessage] = useState(location.state?.successMessage || '')
   const [pendingVerificationEmail, setPendingVerificationEmail] = useState(location.state?.pendingVerificationEmail || '')
-  const [verificationUrl, setVerificationUrl] = useState(location.state?.verificationUrl || '')
   const [googleError, setGoogleError] = useState(new URLSearchParams(location.search).get('googleError') || '')
   const [isGoogleLoading, setIsGoogleLoading] = useState(false)
   const [isResendingVerification, setIsResendingVerification] = useState(false)
@@ -64,10 +63,6 @@ const Login = () => {
       setPendingVerificationEmail('')
     }
 
-    if (verificationUrl) {
-      setVerificationUrl('')
-    }
-
     if (googleError) {
       setGoogleError('')
     }
@@ -104,23 +99,31 @@ const Login = () => {
 
       if (data?.success) {
         setSuccessMessage(data.message || 'Verification email sent. Please check your inbox.')
-        setVerificationUrl(data.verificationUrl || '')
       }
     } finally {
       setIsResendingVerification(false)
     }
   }
 
-  function handleOpenVerificationLink() {
-    if (!verificationUrl || typeof window === 'undefined') {
+  async function handleVerifyNowClick() {
+    const email = formData.email.trim()
+    const password = formData.password
+
+    if (!email || !password) {
+      setSuccessMessage('Enter both email and password first, then tap Verify now.')
       return
     }
 
-    window.location.href = verificationUrl
+    const data = await handleVerifyAccount({ email, password })
+
+    if (data?.success) {
+      navigate('/', { replace: true })
+    }
   }
 
   const statusMessage = error || googleError || successMessage || (user ? 'You are logged in.' : '')
   const statusTone = error || googleError ? 'error' : 'success'
+  const canVerifyNow = Boolean(formData.email.trim() && formData.password)
 
 
   return (
@@ -133,8 +136,8 @@ const Login = () => {
           </label>
 
           <div className="auth-actions-stack">
-            {verificationUrl ? (
-              <button className="auth-text-action auth-text-action--strong" onClick={handleOpenVerificationLink} type="button">
+            {canVerifyNow ? (
+              <button className="auth-text-action auth-text-action--strong" disabled={loading} onClick={handleVerifyNowClick} type="button">
                 Verify now
               </button>
             ) : null}
