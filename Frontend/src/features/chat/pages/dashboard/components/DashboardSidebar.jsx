@@ -1,6 +1,7 @@
 import React from 'react'
 import { SparkleIcon } from '../../../../auth/components/AuthIcons'
 import { ChatIcon, CloseIcon, LogoutIcon, PlusIcon, TrashIcon } from './DashboardIcons'
+import AvatarImage from './AvatarImage'
 
 function DashboardSidebar({
   avatar,
@@ -92,7 +93,12 @@ function DashboardSidebar({
       <div className="dashboard-sidebar__footer">
         <button className="dashboard-sidebar__profile" onClick={onOpenProfile} type="button">
           <span className="dashboard-sidebar__profile-avatar">
-            {avatar ? <img alt={username} className="dashboard-sidebar__profile-image" src={avatar} /> : avatarLabel}
+            <AvatarImage
+              fallback={avatarLabel}
+              fallbackClassName="dashboard-sidebar__profile-fallback"
+              imageClassName="dashboard-sidebar__profile-image"
+              src={avatar}
+            />
           </span>
           <span className="dashboard-sidebar__profile-name">{username}</span>
         </button>

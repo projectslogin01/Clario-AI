@@ -1,6 +1,7 @@
 import React from 'react'
 import { SparkleIcon } from '../../../../auth/components/AuthIcons'
 import { MenuIcon } from './DashboardIcons'
+import AvatarImage from './AvatarImage'
 
 function DashboardTopbar({ actionLabel, avatar, avatarLabel, isSidebarOpen, onAction, onMenuToggle, onProfileOpen, username }) {
   return (
@@ -30,11 +31,12 @@ function DashboardTopbar({ actionLabel, avatar, avatarLabel, isSidebarOpen, onAc
         </button>
 
         <button aria-label={`${username} profile`} className="dashboard-avatar" onClick={onProfileOpen} type="button">
-          {avatar ? (
-            <img alt={username} className="dashboard-avatar__image" src={avatar} />
-          ) : (
-            <span className="dashboard-avatar__label">{avatarLabel}</span>
-          )}
+          <AvatarImage
+            fallback={avatarLabel}
+            fallbackClassName="dashboard-avatar__label"
+            imageClassName="dashboard-avatar__image"
+            src={avatar}
+          />
         </button>
       </div>
     </header>

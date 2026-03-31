@@ -877,6 +877,11 @@
   aspect-ratio: 1 / 1;
 }
 
+.dashboard-sidebar__profile-fallback {
+  position: relative;
+  z-index: 1;
+}
+
 .dashboard-sidebar__profile-name {
   font-size: 1.04rem;
 }
@@ -1615,6 +1620,8 @@
 .dashboard-profile-form__avatar-preview {
   width: 5rem;
   height: 5rem;
+  display: grid;
+  place-items: center;
   flex-shrink: 0;
   border: 1px solid var(--field-border);
   border-radius: 50%;
@@ -1626,6 +1633,13 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+.dashboard-profile-form__avatar-fallback {
+  color: var(--accent-strong);
+  font-size: 1.1rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
 }
 
 .dashboard-profile-form__avatar-actions {

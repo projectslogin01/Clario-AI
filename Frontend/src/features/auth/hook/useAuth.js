@@ -1,6 +1,7 @@
 import { useDispatch } from 'react-redux'
 import { getGoogleAuthUrl, login, register, getme, logout, updateProfile } from '../service/auth.api'
 import { setUser, setError, setInitialized, setLoading } from '../auth.slice'
+import { resolveAvatarUrl } from '../../../utils/avatar'
 
 const AUTH_SESSION_KEY = 'clario_ai_has_session'
 
@@ -71,6 +72,7 @@ const normalizeUser = (user) => {
 
   return {
     ...user,
+    avatar: resolveAvatarUrl(user.avatar),
     username: user.username ?? user.userrname ?? '',
   }
 }

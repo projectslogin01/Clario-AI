@@ -1,4 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react'
+import { getAvatarLabel } from '../helpers'
+import AvatarImage from './AvatarImage'
 
 function ProfileModal({ initialAvatar, initialUsername, isOpen, isSaving, onClose, onSubmit }) {
   const fileInputRef = useRef(null)
@@ -70,7 +72,13 @@ function ProfileModal({ initialAvatar, initialUsername, isOpen, isSaving, onClos
         <form className="dashboard-profile-form" onSubmit={handleFormSubmit}>
           <div className="dashboard-profile-form__avatar-row">
             <div className="dashboard-profile-form__avatar-preview">
-              {avatarPreview ? <img alt="Profile preview" className="dashboard-profile-form__avatar-image" src={avatarPreview} /> : null}
+              <AvatarImage
+                alt="Profile preview"
+                fallback={getAvatarLabel(username || initialUsername)}
+                fallbackClassName="dashboard-profile-form__avatar-fallback"
+                imageClassName="dashboard-profile-form__avatar-image"
+                src={avatarPreview}
+              />
             </div>
 
             <div className="dashboard-profile-form__avatar-actions">
