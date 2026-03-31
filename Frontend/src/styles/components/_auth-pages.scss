@@ -340,6 +340,11 @@
   }
 }
 
+.auth-text-action--strong {
+  color: var(--accent);
+  font-weight: 700;
+}
+
 .auth-form__submit {
   position: relative;
   width: 100%;

@@ -110,9 +110,10 @@ const Register = () => {
         replace: true,
         state: {
           pendingVerificationEmail: formData.email.trim(),
+          verificationUrl: data.verificationUrl || '',
           successMessage: data.emailSent
             ? 'Account created. Please verify your email before logging in.'
-            : 'Account created, but the verification email is delayed. You can resend it from the login page.',
+            : 'Account created. Email delivery is unavailable right now, so use the Verify now button on login.',
         },
       })
     }

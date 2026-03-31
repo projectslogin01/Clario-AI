@@ -353,10 +353,10 @@ export async function register(req, res) {
             success: true,
             message: emailResult.emailSent
                 ? "User registered successfully"
-                : "User registered successfully, but the verification email is delayed. You can resend it from the login page.",
+                : "User registered successfully. Email delivery is unavailable right now, so please verify from the app.",
             user: formatUser(user),
             emailSent: emailResult.emailSent,
-            verificationUrl: !isProduction ? verification.url : undefined
+            verificationUrl: emailResult.emailSent ? (!isProduction ? verification.url : undefined) : verification.url
         });
     } catch (error) {
         console.error("Register error:", error);
@@ -390,9 +390,9 @@ export async function resendVerification(req, res) {
             success: true,
             message: emailResult.emailSent
                 ? genericMessage
-                : "We could not send the verification email right now. Please try again in a moment.",
+                : "We could not send the verification email right now. Use the direct verification link from the app.",
             emailSent: emailResult.emailSent,
-            verificationUrl: !isProduction ? verification.url : undefined
+            verificationUrl: emailResult.emailSent ? (!isProduction ? verification.url : undefined) : verification.url
         });
     } catch (error) {
         console.error("Resend verification error:", error);

@@ -18,6 +18,7 @@ const Login = () => {
   })
   const [successMessage, setSuccessMessage] = useState(location.state?.successMessage || '')
   const [pendingVerificationEmail, setPendingVerificationEmail] = useState(location.state?.pendingVerificationEmail || '')
+  const [verificationUrl, setVerificationUrl] = useState(location.state?.verificationUrl || '')
   const [googleError, setGoogleError] = useState(new URLSearchParams(location.search).get('googleError') || '')
   const [isGoogleLoading, setIsGoogleLoading] = useState(false)
   const [isResendingVerification, setIsResendingVerification] = useState(false)
@@ -63,6 +64,10 @@ const Login = () => {
       setPendingVerificationEmail('')
     }
 
+    if (verificationUrl) {
+      setVerificationUrl('')
+    }
+
     if (googleError) {
       setGoogleError('')
     }
@@ -99,10 +104,19 @@ const Login = () => {
 
       if (data?.success) {
         setSuccessMessage(data.message || 'Verification email sent. Please check your inbox.')
+        setVerificationUrl(data.verificationUrl || '')
       }
     } finally {
       setIsResendingVerification(false)
     }
+  }
+
+  function handleOpenVerificationLink() {
+    if (!verificationUrl || typeof window === 'undefined') {
+      return
+    }
+
+    window.location.href = verificationUrl
   }
 
   const statusMessage = error || googleError || successMessage || (user ? 'You are logged in.' : '')
@@ -119,6 +133,12 @@ const Login = () => {
           </label>
 
           <div className="auth-actions-stack">
+            {verificationUrl ? (
+              <button className="auth-text-action auth-text-action--strong" onClick={handleOpenVerificationLink} type="button">
+                Verify now
+              </button>
+            ) : null}
+
             {pendingVerificationEmail ? (
               <button className="auth-text-action" disabled={loading || isResendingVerification} onClick={handleResendClick} type="button">
                 {isResendingVerification ? 'Sending link...' : 'Resend verification email'}
