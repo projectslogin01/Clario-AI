@@ -1,5 +1,5 @@
 import { useDispatch } from 'react-redux'
-import { getGoogleAuthUrl, login, register, getme, logout, updateProfile } from '../service/auth.api'
+import { getGoogleAuthUrl, getme, login, logout, register, resendVerification, updateProfile } from '../service/auth.api'
 import { setUser, setError, setInitialized, setLoading } from '../auth.slice'
 import { resolveAvatarUrl } from '../../../utils/avatar'
 
@@ -99,6 +99,20 @@ export function useAuth() {
       return null
     } finally {
       dispatch(setLoading(false))
+    }
+  }
+
+  /**
+   * Resends a verification email without changing global loading state.
+   * @param {{ email: string }} payload
+   */
+  async function handleResendVerification({ email }) {
+    try {
+      dispatch(setError(null))
+      return await resendVerification({ email })
+    } catch (error) {
+      dispatch(setError(getApiErrorMessage(error, 'Could not resend verification email')))
+      return null
     }
   }
 
@@ -218,5 +232,5 @@ export function useAuth() {
     window.location.href = getGoogleAuthUrl(screen)
   }
 
-  return { handleAppStart, handleGetme, handleGoogleLogin, handleLogin, handleLogout, handleRegister, handleUpdateProfile }
+  return { handleAppStart, handleGetme, handleGoogleLogin, handleLogin, handleLogout, handleRegister, handleResendVerification, handleUpdateProfile }
 }

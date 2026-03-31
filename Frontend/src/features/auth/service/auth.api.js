@@ -18,6 +18,16 @@ export async function register({ email, username, password }) {
 }
 
 /**
+ * Requests another verification email for an existing unverified account.
+ * @param {{ email: string }} payload
+ */
+export async function resendVerification({ email }) {
+  const response = await api.post('/api/auth/resend-verification', { email })
+
+  return response.data
+}
+
+/**
  * Calls the backend login endpoint.
  * @param {{ email: string, password: string }} payload
  */

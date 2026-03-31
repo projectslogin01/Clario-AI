@@ -10,15 +10,17 @@ import { useAuth } from '../hook/useAuth'
 const Login = () => {
   const location = useLocation()
   const navigate = useNavigate()
-  const { handleGoogleLogin, handleLogin } = useAuth()
+  const { handleGoogleLogin, handleLogin, handleResendVerification } = useAuth()
   const { error, loading, user } = useSelector((state) => state.auth)
   const [formData, setFormData] = useState({
     email: '',
     password: '',
   })
   const [successMessage, setSuccessMessage] = useState(location.state?.successMessage || '')
+  const [pendingVerificationEmail, setPendingVerificationEmail] = useState(location.state?.pendingVerificationEmail || '')
   const [googleError, setGoogleError] = useState(new URLSearchParams(location.search).get('googleError') || '')
   const [isGoogleLoading, setIsGoogleLoading] = useState(false)
+  const [isResendingVerification, setIsResendingVerification] = useState(false)
 
   const loginFields = [
     {
@@ -57,6 +59,10 @@ const Login = () => {
       setSuccessMessage('')
     }
 
+    if (pendingVerificationEmail) {
+      setPendingVerificationEmail('')
+    }
+
     if (googleError) {
       setGoogleError('')
     }
@@ -78,6 +84,27 @@ const Login = () => {
     handleGoogleLogin('login')
   }
 
+  async function handleResendClick() {
+    const email = pendingVerificationEmail || formData.email.trim()
+
+    if (!email) {
+      setSuccessMessage('Enter your email address first so we can resend the verification link.')
+      return
+    }
+
+    setIsResendingVerification(true)
+
+    try {
+      const data = await handleResendVerification({ email })
+
+      if (data?.success) {
+        setSuccessMessage(data.message || 'Verification email sent. Please check your inbox.')
+      }
+    } finally {
+      setIsResendingVerification(false)
+    }
+  }
+
   const statusMessage = error || googleError || successMessage || (user ? 'You are logged in.' : '')
   const statusTone = error || googleError ? 'error' : 'success'
 
@@ -91,9 +118,17 @@ const Login = () => {
             <span>Remember me</span>
           </label>
 
-          <button className="auth-text-action" disabled={loading} type="button">
-            Forgot password?
-          </button>
+          <div className="auth-actions-stack">
+            {pendingVerificationEmail ? (
+              <button className="auth-text-action" disabled={loading || isResendingVerification} onClick={handleResendClick} type="button">
+                {isResendingVerification ? 'Sending link...' : 'Resend verification email'}
+              </button>
+            ) : null}
+
+            <button className="auth-text-action" disabled={loading} type="button">
+              Forgot password?
+            </button>
+          </div>
         </>
       }
       fields={loginFields}

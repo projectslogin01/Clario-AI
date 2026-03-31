@@ -109,7 +109,10 @@ const Register = () => {
       navigate('/login', {
         replace: true,
         state: {
-          successMessage: 'Account created. Please verify your email before logging in.',
+          pendingVerificationEmail: formData.email.trim(),
+          successMessage: data.emailSent
+            ? 'Account created. Please verify your email before logging in.'
+            : 'Account created, but the verification email is delayed. You can resend it from the login page.',
         },
       })
     }

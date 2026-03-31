@@ -10,6 +10,7 @@ const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || "";
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || "";
 const GOOGLE_STATE_COOKIE = "google_oauth_state";
 const GOOGLE_SCREEN_COOKIE = "google_oauth_screen";
+const EMAIL_TIMEOUT_MS = 12000;
 const isProduction = process.env.NODE_ENV === "production";
 const AUTH_COOKIE_OPTIONS = {
     httpOnly: true,
@@ -295,6 +296,44 @@ async function sendWelcomeEmail(user, verificationUrl) {
     });
 }
 
+function timeoutResult(ms) {
+    return new Promise((resolve) => {
+        setTimeout(() => {
+            resolve({
+                emailSent: false,
+                timedOut: true,
+                error: new Error("Verification email is taking too long to send.")
+            });
+        }, ms);
+    });
+}
+
+async function trySendWelcomeEmail(user, verificationUrl) {
+    const emailTask = sendWelcomeEmail(user, verificationUrl)
+        .then(() => ({
+            emailSent: true,
+            timedOut: false,
+            error: null
+        }))
+        .catch((error) => ({
+            emailSent: false,
+            timedOut: false,
+            error
+        }));
+
+    const result = await Promise.race([
+        emailTask,
+        timeoutResult(EMAIL_TIMEOUT_MS)
+    ]);
+
+    if (!result.emailSent && result.error) {
+        console.error("Welcome email could not be sent:", result.error?.message || result.error);
+        console.log(`Verification URL for ${user.email}: ${verificationUrl}`);
+    }
+
+    return result;
+}
+
 export async function register(req, res) {
     try {
         const { username, email, password } = req.body;
@@ -308,25 +347,55 @@ export async function register(req, res) {
 
         const user = await userModel.create({ username, email, password });
         const verification = buildVerificationData(user.email);
-        let emailSent = false;
-
-        try {
-            await sendWelcomeEmail(user, verification.url);
-            emailSent = true;
-        } catch (error) {
-            console.error("Welcome email could not be sent:", error?.message || error);
-            console.log(`Verification URL for ${user.email}: ${verification.url}`);
-        }
+        const emailResult = await trySendWelcomeEmail(user, verification.url);
 
         return res.status(201).json({
             success: true,
-            message: "User registered successfully",
+            message: emailResult.emailSent
+                ? "User registered successfully"
+                : "User registered successfully, but the verification email is delayed. You can resend it from the login page.",
             user: formatUser(user),
-            emailSent,
+            emailSent: emailResult.emailSent,
             verificationUrl: !isProduction ? verification.url : undefined
         });
     } catch (error) {
         console.error("Register error:", error);
+        return sendError(res, 500, "Internal server error");
+    }
+}
+
+export async function resendVerification(req, res) {
+    try {
+        const email = String(req.body.email || "").trim().toLowerCase();
+        const genericMessage = "If an unverified account exists for this email, a verification link has been sent.";
+
+        if (!email) {
+            return sendError(res, 400, "Email is required.");
+        }
+
+        const user = await userModel.findOne({ email });
+
+        if (!user || user.verified) {
+            return res.status(200).json({
+                success: true,
+                message: genericMessage,
+                emailSent: true
+            });
+        }
+
+        const verification = buildVerificationData(user.email);
+        const emailResult = await trySendWelcomeEmail(user, verification.url);
+
+        return res.status(200).json({
+            success: true,
+            message: emailResult.emailSent
+                ? genericMessage
+                : "We could not send the verification email right now. Please try again in a moment.",
+            emailSent: emailResult.emailSent,
+            verificationUrl: !isProduction ? verification.url : undefined
+        });
+    } catch (error) {
+        console.error("Resend verification error:", error);
         return sendError(res, 500, "Internal server error");
     }
 }

@@ -262,6 +262,12 @@
   margin-top: $space-4;
 }
 
+.auth-actions-stack {
+  display: inline-grid;
+  justify-items: end;
+  gap: $space-2;
+}
+
 .auth-check {
   display: inline-flex;
   align-items: center;
@@ -647,6 +653,10 @@
   .auth-form__auxiliary {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .auth-actions-stack {
+    justify-items: start;
   }
 
   .auth-card__title {

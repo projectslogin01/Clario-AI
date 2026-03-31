@@ -23,6 +23,9 @@ function hasOAuthConfig() {
 function createAppPasswordTransporter() {
     return nodemailer.createTransport({
         service: "gmail",
+        connectionTimeout: 10000,
+        greetingTimeout: 10000,
+        socketTimeout: 15000,
         auth: {
             user: gmailUser,
             pass: gmailAppPassword
@@ -51,6 +54,9 @@ async function createOAuthTransporter() {
 
     return nodemailer.createTransport({
         service: "gmail",
+        connectionTimeout: 10000,
+        greetingTimeout: 10000,
+        socketTimeout: 15000,
         auth: {
             type: "OAuth2",
             user: gmailUser,
