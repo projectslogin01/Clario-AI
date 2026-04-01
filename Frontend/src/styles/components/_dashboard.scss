@@ -2013,14 +2013,14 @@
 
   .dashboard-scene .theme-toggle--dashboard {
     right: $space-3;
-    bottom: calc(var(--dashboard-docked-height) + #{$space-3} + env(safe-area-inset-bottom));
+    bottom: calc(var(--dashboard-docked-height) + #{$space-5} + env(safe-area-inset-bottom));
     width: 3rem;
     height: 3rem;
     z-index: 9;
   }
 
   .dashboard-scene:not(.dashboard-scene--thread) .theme-toggle--dashboard {
-    bottom: calc(#{$space-4} + env(safe-area-inset-bottom));
+    bottom: calc(#{$space-5} + env(safe-area-inset-bottom));
   }
 
   .dashboard-scene .theme-toggle--dashboard .theme-toggle__icon {
@@ -2165,13 +2165,13 @@
 
   .dashboard-scene .theme-toggle--dashboard {
     right: $space-2;
-    bottom: calc(var(--dashboard-docked-height) + #{$space-2} + env(safe-area-inset-bottom));
+    bottom: calc(var(--dashboard-docked-height) + #{$space-4} + env(safe-area-inset-bottom));
     width: 2.85rem;
     height: 2.85rem;
   }
 
   .dashboard-scene:not(.dashboard-scene--thread) .theme-toggle--dashboard {
-    bottom: calc(#{$space-3} + env(safe-area-inset-bottom));
+    bottom: calc(#{$space-4} + env(safe-area-inset-bottom));
   }
 }
 
