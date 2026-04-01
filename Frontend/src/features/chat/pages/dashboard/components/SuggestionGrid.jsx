@@ -2,7 +2,7 @@ import React from 'react'
 
 function SuggestionGrid({ onSuggestionClick, suggestions }) {
   return (
-    <div className="dashboard-suggestions" aria-label="Suggested prompts">
+    <div className="dashboard-suggestions" aria-label="Suggested prompts" data-dashboard-intro>
       {suggestions.map(({ label, icon: Icon, tone }) => (
         <button
           className={`dashboard-suggestion dashboard-suggestion--${tone}`}

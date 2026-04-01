@@ -40,7 +40,7 @@ function ChatActionsBar({ isSaved, messages, onSaveToggle, threadTitle }) {
   }
 
   return (
-    <div className="dashboard-chat-actions">
+    <div className="dashboard-chat-actions" data-dashboard-intro>
       <div className="dashboard-chat-actions__buttons">
         <button className="dashboard-chat-actions__button" onClick={handleCopy} type="button">
           <CopyIcon className="dashboard-chat-actions__icon" />

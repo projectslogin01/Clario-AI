@@ -6,7 +6,7 @@ function ThemeToggleButton({ nextTheme, onToggle, theme }) {
     <button
       aria-label={`Switch to ${nextTheme} mode`}
       aria-pressed={theme === 'dark'}
-      className="theme-toggle"
+      className="theme-toggle theme-toggle--dashboard"
       onClick={onToggle}
       type="button"
     >

@@ -99,7 +99,12 @@ function PromptComposer({
   }, [docked])
 
   return (
-    <form className={`dashboard-composer${docked ? ' dashboard-composer--dock' : ''}`} onSubmit={onSubmit} ref={formRef}>
+    <form
+      className={`dashboard-composer${docked ? ' dashboard-composer--dock' : ''}`}
+      data-dashboard-intro={!docked ? true : undefined}
+      onSubmit={onSubmit}
+      ref={formRef}
+    >
       <div className="dashboard-composer__toolbar">
         <div className="dashboard-mode-toggle" role="tablist" aria-label="Composer mode">
           <button

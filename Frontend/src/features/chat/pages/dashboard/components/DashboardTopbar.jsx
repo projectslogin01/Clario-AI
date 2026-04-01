@@ -5,7 +5,7 @@ import AvatarImage from './AvatarImage'
 
 function DashboardTopbar({ actionLabel, avatar, avatarLabel, isSidebarOpen, onAction, onMenuToggle, onProfileOpen, username }) {
   return (
-    <header className="dashboard-topbar">
+    <header className="dashboard-topbar" data-dashboard-intro>
       <div className="dashboard-topbar__left">
         <button
           aria-expanded={isSidebarOpen}

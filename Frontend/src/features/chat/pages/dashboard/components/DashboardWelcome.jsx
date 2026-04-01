@@ -46,7 +46,7 @@ function DashboardWelcome({
       />
 
       <main className="dashboard-main">
-        <section className="dashboard-hero">
+        <section className="dashboard-hero" data-dashboard-intro>
           <h1 className="dashboard-hero__title">What do you want to know?</h1>
           <p className="dashboard-hero__copy">
             Ask anything. Your question will be sent to the backend AI service and the reply will appear here.

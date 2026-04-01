@@ -5,15 +5,21 @@ import DashboardThread from './components/DashboardThread'
 import DashboardWelcome from './components/DashboardWelcome'
 import ThemeToggleButton from './components/ThemeToggleButton'
 import { useDashboardPage } from './useDashboardPage'
+import { useDashboardMotion } from './useDashboardMotion'
 
 function DashboardPage() {
   const page = useDashboardPage()
+  const motionScopeRef = useDashboardMotion({
+    isSidebarOpen: page.isSidebarOpen,
+    isThreadView: page.hasActiveThread,
+    messageCount: page.visibleMessages.length,
+  })
   const sceneClassName = `dashboard-scene${page.isThemeTransitioning ? ' dashboard-scene--theme-shift' : ''}${
     page.hasActiveThread ? ' dashboard-scene--thread' : ''
   }${page.isSidebarOpen ? ' dashboard-scene--sidebar-open' : ''}`
 
   return (
-    <div className={sceneClassName}>
+    <div className={sceneClassName} ref={motionScopeRef}>
       <span aria-hidden="true" className="theme-transition-layer" />
 
       {page.isSidebarOpen ? (

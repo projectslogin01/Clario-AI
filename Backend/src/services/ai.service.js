@@ -22,7 +22,7 @@ How to answer:
 const CHAT_MODELS = [
     {
         alias: "gemini",
-        label: "Gemini Free",
+        label: "Clario Mini",
         provider: "google",
         model: process.env.GEMINI_MODEL || "gemini-2.5-flash",
         apiKeyEnvVar: "GEMINI_API_KEY",
@@ -31,7 +31,7 @@ const CHAT_MODELS = [
     },
     {
         alias: "cloudflare",
-        label: "Cloudflare Qwen",
+        label: "Clario Qwen",
         provider: "cloudflare",
         model: process.env.CLOUDFLARE_MODEL || "@cf/qwen/qwen3-30b-a3b-fp8",
         apiKeyEnvVar: "CLOUDFLARE_API_TOKEN",

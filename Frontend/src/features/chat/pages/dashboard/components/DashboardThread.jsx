@@ -57,7 +57,7 @@ function DashboardThread({
       <main className="dashboard-thread">
         <div className="dashboard-thread__scroll">
           <div className="dashboard-thread__inner">
-            <div className="dashboard-thread__hero">
+            <div className="dashboard-thread__hero" data-dashboard-intro>
               <h1 className="dashboard-thread__title">{threadTitle}</h1>
               <p className="dashboard-thread__copy">
                 Ask follow-up questions in the same thread and the backend will keep the conversation grouped.

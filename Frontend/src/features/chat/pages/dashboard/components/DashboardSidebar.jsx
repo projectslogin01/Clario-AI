@@ -58,7 +58,7 @@ function DashboardSidebar({
 
   return (
     <aside className={`dashboard-sidebar${isSidebarOpen ? ' dashboard-sidebar--open' : ''}`}>
-      <div className="dashboard-sidebar__header">
+      <div className="dashboard-sidebar__header" data-dashboard-sidebar-item>
         <div className="dashboard-sidebar__brand">
           <span className="dashboard-brand__badge" aria-hidden="true">
             <SparkleIcon className="dashboard-brand__icon" />
@@ -76,12 +76,12 @@ function DashboardSidebar({
         </button>
       </div>
 
-      <button className="dashboard-sidebar__new" onClick={onNewThread} type="button">
+      <button className="dashboard-sidebar__new" data-dashboard-sidebar-item onClick={onNewThread} type="button">
         <span>New Thread</span>
         <PlusIcon className="dashboard-sidebar__new-icon" />
       </button>
 
-      <div className="dashboard-sidebar__section">
+      <div className="dashboard-sidebar__section" data-dashboard-sidebar-item>
         <p className="dashboard-sidebar__label">Saved</p>
         <div className="dashboard-sidebar__threads">{renderChatList(savedChats, 'No saved chats yet.')}</div>
 
@@ -90,7 +90,7 @@ function DashboardSidebar({
         <div className="dashboard-sidebar__threads">{renderChatList(recentChats, 'No recent chats yet.')}</div>
       </div>
 
-      <div className="dashboard-sidebar__footer">
+      <div className="dashboard-sidebar__footer" data-dashboard-sidebar-item>
         <button className="dashboard-sidebar__profile" onClick={onOpenProfile} type="button">
           <span className="dashboard-sidebar__profile-avatar">
             <AvatarImage
